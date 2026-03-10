@@ -14,6 +14,38 @@ services:
     networks:
       - esports-net
 
+  dynamodb-init:
+    image: amazon/aws-cli:latest
+    depends_on:
+      - dynamodb-local
+    environment:
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: ["/bin/sh", "/scripts/init-tables.sh"]
+    networks:
+      - esports-net
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-dev-secret}
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=us-east-1
+    depends_on:
+      - dynamodb-local
+      - redis
+      - dynamodb-init
+    networks:
+      - esports-net
+
 networks:
   esports-net:
     driver: bridge
