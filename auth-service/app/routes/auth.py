@@ -23,7 +23,6 @@ from app.schemas.auth import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 bearer = HTTPBearer(auto_error=False)
 
-
 def _get_user_by_email(email: str):
     table = get_table("Users")
     resp = table.query(
@@ -33,12 +32,10 @@ def _get_user_by_email(email: str):
     items = resp.get("Items", [])
     return items[0] if items else None
 
-
 def _get_user_by_id(user_id: str):
     table = get_table("Users")
     resp = table.get_item(Key={"user_id": user_id})
     return resp.get("Item")
-
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
 def register(payload: RegisterRequest):
@@ -65,7 +62,6 @@ def register(payload: RegisterRequest):
     user_public = UserPublic(**{k: v for k, v in item.items() if k != "password_hash"})
     return TokenResponse(access_token=token, user=user_public)
 
-
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest):
     user = _get_user_by_email(payload.email)
@@ -80,7 +76,6 @@ def login(payload: LoginRequest):
     user_public = UserPublic(**{k: v for k, v in user.items() if k != "password_hash"})
     return TokenResponse(access_token=token, user=user_public)
 
-
 @router.get("/me", response_model=UserPublic)
 def me(credentials: HTTPAuthorizationCredentials = Depends(bearer)):
     if not credentials:
@@ -94,7 +89,6 @@ def me(credentials: HTTPAuthorizationCredentials = Depends(bearer)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return UserPublic(**{k: v for k, v in user.items() if k != "password_hash"})
-
 
 @router.post("/verify", response_model=VerifyResponse)
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(bearer)):

@@ -49,6 +49,25 @@ services:
     networks:
       - esports-net
 
+  tournament-service:
+    build: ./tournament-service
+    ports:
+      - "8002:8002"
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - REDIS_URL=redis://redis:6379
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - MATCH_SERVICE_URL=http://match-service:8003
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=us-east-1
+    depends_on:
+      - dynamodb-local
+      - redis
+      - auth-service
+    networks:
+      - esports-net
+
 networks:
   esports-net:
     driver: bridge

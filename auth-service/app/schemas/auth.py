@@ -2,12 +2,10 @@ from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 
-
 class UserRole(str, Enum):
     player = "player"
     organizer = "organizer"
     admin = "admin"
-
 
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=32)
@@ -15,11 +13,9 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8)
     role: UserRole = UserRole.player
 
-
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-
 
 class UserPublic(BaseModel):
     user_id: str
@@ -29,12 +25,10 @@ class UserPublic(BaseModel):
     created_at: str
     is_active: bool
 
-
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserPublic
-
 
 class VerifyResponse(BaseModel):
     valid: bool
