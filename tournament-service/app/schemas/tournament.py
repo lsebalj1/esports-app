@@ -23,7 +23,7 @@ class CreateTournamentRequest(BaseModel):
     format: TournamentFormat = TournamentFormat.single_elimination
     max_participants: int = Field(..., ge=2, le=256)
     prize_pool: Optional[float] = None
-    start_date: str  # ISO datetime string
+    start_date: str  
     description: Optional[str] = None
 
 class UpdateTournamentRequest(BaseModel):
@@ -44,8 +44,8 @@ class TournamentResponse(BaseModel):
     prize_pool: Optional[float]
     start_date: str
     status: str
-    organizer_id: str
-    organizer_name: str
+    admin_id: str        
+    admin_name: str      
     description: Optional[str]
     created_at: str
 

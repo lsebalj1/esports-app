@@ -1,4 +1,13 @@
+#!/bin/sh
+set -e
+
 ENDPOINT="http://dynamodb-local:8000"
+
+echo "Waiting for DynamoDB Local..."
+until aws dynamodb list-tables --endpoint-url $ENDPOINT > /dev/null 2>&1; do
+  sleep 2
+done
+echo "DynamoDB ready. Creating tables..."
 
 # Users 
 aws dynamodb create-table \

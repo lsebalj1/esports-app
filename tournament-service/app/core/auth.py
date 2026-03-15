@@ -19,7 +19,7 @@ async def require_auth(credentials: HTTPAuthorizationCredentials = Depends(beare
         raise HTTPException(status_code=401, detail="Invalid token")
     return data
 
-async def require_organizer(user: dict = Depends(require_auth)) -> dict:
-    if user["role"] not in ("organizer", "admin"):
-        raise HTTPException(status_code=403, detail="Organizer role required")
+async def require_admin(user: dict = Depends(require_auth)) -> dict:
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
     return user
