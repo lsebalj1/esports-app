@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes.auth import router as auth_router
+from app.routes.match import router as match_router
 
 app = FastAPI(
-    title="Authentication",
-    description="Handles registration, login, and JWT validation.",
+    title="Match Service",
+    description="Manages match lifecycle, player assignment, and result submission.",
     version="1.0.0",
 )
 
@@ -15,8 +15,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router)
+app.include_router(match_router)
 
 @app.get("/health")
 def health():
-    return {"service": "auth", "status": "ok"}
+    return {"service": "match", "status": "ok"}

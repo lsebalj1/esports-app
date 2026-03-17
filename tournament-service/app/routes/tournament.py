@@ -3,22 +3,14 @@ import uuid
 import random
 from datetime import datetime, timezone
 from typing import List, Optional
-
 import httpx
 from boto3.dynamodb.conditions import Key
 from fastapi import APIRouter, Depends, HTTPException, Query
-
 from app.core.auth import require_admin
 from app.core.config import settings
 from app.core.database import get_table
 from app.core.events import publish_event
-from app.schemas.tournament import (
-    BracketMatch,
-    BracketResponse,
-    CreateTournamentRequest,
-    TournamentResponse,
-    UpdateTournamentRequest,
-)
+from app.schemas.tournament import (BracketMatch, BracketResponse, CreateTournamentRequest, TournamentResponse, UpdateTournamentRequest)
 
 router = APIRouter(prefix="/tournaments", tags=["tournaments"])
 

@@ -24,7 +24,7 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
-      AWS_DEFAULT_REGION: us-east-1
+      AWS_DEFAULT_REGION: eu-central-1
     volumes:
       - ./scripts:/scripts
     entrypoint: ["/bin/sh", "/scripts/init-tables.sh"]
@@ -41,7 +41,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev-secret}
       - AWS_ACCESS_KEY_ID=local
       - AWS_SECRET_ACCESS_KEY=local
-      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_DEFAULT_REGION=eu-central-1
     depends_on:
       - dynamodb-local
       - redis
@@ -60,7 +60,7 @@ services:
       - MATCH_SERVICE_URL=http://match-service:8003
       - AWS_ACCESS_KEY_ID=local
       - AWS_SECRET_ACCESS_KEY=local
-      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_DEFAULT_REGION=eu-central-1
     depends_on:
       - dynamodb-local
       - redis
@@ -68,6 +68,25 @@ services:
     networks:
       - esports-net
 
+  match-service:
+    build: ./match-service
+    ports:
+      - "8003:8003"
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - REDIS_URL=redis://redis:6379
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=eu-central-1
+    depends_on:
+      - dynamodb-local
+      - redis
+      - auth-service
+      - dynamodb-init
+    networks:
+      - esports-net
+    
 networks:
   esports-net:
     driver: bridge

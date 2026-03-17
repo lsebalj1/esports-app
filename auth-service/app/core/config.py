@@ -8,6 +8,6 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60
     aws_access_key_id: str = "local"
     aws_secret_access_key: str = "local"
-    aws_default_region: str = "us-east-1"
+    aws_default_region: str = "eu-central-1"
 
 settings = Settings()

@@ -1,24 +1,12 @@
 import uuid
 from datetime import datetime, timezone
-
 from boto3.dynamodb.conditions import Key
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
 from app.core.database import get_table
-from app.core.security import (
-    create_access_token,
-    decode_token,
-    hash_password,
-    verify_password,
-)
-from app.schemas.auth import (
-    LoginRequest,
-    RegisterRequest,
-    TokenResponse,
-    UserPublic,
-    VerifyResponse,
-)
+from app.core.security import (create_access_token, decode_token, hash_password, verify_password)
+
+from app.schemas.auth import (LoginRequest, RegisterRequest, TokenResponse, UserPublic, VerifyResponse)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 bearer = HTTPBearer(auto_error=False)

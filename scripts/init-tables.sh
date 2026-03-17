@@ -42,3 +42,24 @@ aws dynamodb create-table \
     ],
     "Projection": {"ProjectionType":"ALL"}
   }]' 2>/dev/null || echo "Tournaments already exists"
+
+# Matches
+aws dynamodb create-table \
+  --endpoint-url $ENDPOINT \
+  --table-name Matches \
+  --attribute-definitions \
+    AttributeName=match_id,AttributeType=S \
+    AttributeName=tournament_id,AttributeType=S \
+    AttributeName=scheduled_at,AttributeType=S \
+  --key-schema AttributeName=match_id,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --global-secondary-indexes '[
+    {
+      "IndexName": "tournament-index",
+      "KeySchema": [
+        {"AttributeName":"tournament_id","KeyType":"HASH"},
+        {"AttributeName":"scheduled_at","KeyType":"RANGE"}
+      ],
+      "Projection": {"ProjectionType":"ALL"}
+    }
+  ]' 2>/dev/null || echo "Table Matches already exists"
