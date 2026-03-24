@@ -86,6 +86,37 @@ services:
       - dynamodb-init
     networks:
       - esports-net
+  
+  stats-service:
+    build: ./stats-service
+    ports:
+      - "8004:8004"
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - REDIS_URL=redis://redis:6379
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=eu-central-1
+    depends_on:
+      - dynamodb-local
+      - redis
+      - dynamodb-init
+    networks:
+      - esports-net
+  
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - auth-service
+      - tournament-service
+      - match-service
+      - stats-service
+    networks:
+      - esports-net
+    restart: on-failure
     
 networks:
   esports-net:
