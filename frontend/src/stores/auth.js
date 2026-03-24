@@ -9,8 +9,8 @@ export const authStore = reactive({
     return !!this.token
   },
 
-  get isOrganizer() {
-    return this.user?.role === 'organizer' || this.user?.role === 'admin'
+  get isAdmin() {
+    return this.user?.role === 'admin'
   },
 
   async login(email, password) {

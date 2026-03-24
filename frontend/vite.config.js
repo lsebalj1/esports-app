@@ -23,7 +23,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/api/stats': {
-        target: 'http://statistics-service:8004',
+        target: 'http://stats-service:8004',
         rewrite: path => path.replace(/^\/api\/stats/, '/stats'),
         changeOrigin: true,
       },

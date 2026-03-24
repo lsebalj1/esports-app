@@ -1,8 +1,8 @@
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">🏆 Turniri</h1>
-      <button v-if="auth.isOrganizer" class="btn btn-primary" @click="showForm = !showForm">
+      <h1 class="page-title">Turniri</h1>
+      <button v-if="auth.isAdmin" class="btn btn-primary" @click="showForm = !showForm">
         {{ showForm ? 'X' : '+ Novi turnir' }}
       </button>
     </div>
@@ -54,7 +54,6 @@
       </button>
     </div>
 
-    <!-- Filters -->
     <div class="filters">
       <button
         v-for="f in filters"
@@ -67,18 +66,15 @@
       </button>
     </div>
 
-    <!-- Loading -->
     <div v-if="loading" class="loading">
       <div class="spinner"></div> Učitavanje...
     </div>
 
-    <!-- Empty -->
     <div v-else-if="!tournaments.length" class="empty">
       <div class="empty-icon">🏆</div>
       <div class="empty-text">Nema turnira.</div>
     </div>
 
-    <!-- List -->
     <div v-else class="tournament-list">
       <div
         v-for="t in tournaments"
@@ -100,8 +96,6 @@
           <span v-if="t.prize_pool">${{ t.prize_pool }}</span>
           <span>{{ formatDate(t.start_date) }}</span>
         </div>
-
-        <div class="tc-organizer">Organizator: {{ t.organizer_name }}</div>
       </div>
     </div>
   </div>
@@ -273,10 +267,5 @@ onMounted(load)
   font-size: 13px;
   color: var(--text-muted);
   margin-bottom: 10px;
-}
-
-.tc-organizer {
-  font-size: 12px;
-  color: var(--text-muted);
 }
 </style>

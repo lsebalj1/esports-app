@@ -36,7 +36,7 @@
       <div v-if="success" class="alert alert-success">{{ success }}</div>
 
       <div class="actions">
-        <template v-if="auth.isLoggedIn && tournament.status === 'registration' && !auth.isOrganizer">
+        <template v-if="auth.isLoggedIn && tournament.status === 'registration' && !auth.isAdmin">
           <button v-if="!isRegistered" class="btn btn-primary" :disabled="actionLoading" @click="register">
             <span v-if="actionLoading" class="spinner"></span>
             Prijavi se na turnir
@@ -89,7 +89,6 @@ import { authStore as auth } from '../stores/auth.js'
 
 const route = useRoute()
 const id = route.params.id
-
 const tournament = ref(null)
 const bracket = ref(null)
 const loading = ref(false)
@@ -126,7 +125,8 @@ async function load() {
 }
 
 async function register() {
-  error.value = ''; success.value = ''
+  error.value = ''
+  success.value = ''
   actionLoading.value = true
   try {
     await tournamentApi.register(id)
@@ -140,7 +140,9 @@ async function register() {
 }
 
 async function unregister() {
-  error.value = ''; success.value = ''
+  error.value = ''
+  success.value = ''
+  
   actionLoading.value = true
   try {
     await tournamentApi.unregister(id)
@@ -154,7 +156,8 @@ async function unregister() {
 }
 
 async function generateBracket() {
-  error.value = ''; success.value = ''
+  error.value = ''
+  success.value = ''
   actionLoading.value = true
   try {
     bracket.value = await tournamentApi.generateBracket(id)
@@ -168,12 +171,12 @@ async function generateBracket() {
 }
 
 function statusLabel(s) {
-  const m = { registration: 'Registracija', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
+  const m = {registration: 'Registracija', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
   return m[s] || s
 }
 
 function formatLabel(f) {
-  const m = { single_elimination: 'Single Elimination', double_elimination: 'Double Elimination', round_robin: 'Round Robin' }
+  const m = {single_elimination: 'Single Elimination', double_elimination: 'Double Elimination', round_robin: 'Round Robin' }
   return m[f] || f
 }
 
@@ -185,8 +188,8 @@ onMounted(load)
 </script>
 
 <style scoped>
-.back-btn { margin-bottom: 8px; }
-.t-game { color: var(--accent); font-size: 14px; margin-top: 2px; }
+.back-btn {margin-bottom: 8px; }
+.t-game {color: var(--accent); font-size: 14px; margin-top: 2px; }
 
 .info-grid {
   display: grid;
@@ -215,7 +218,6 @@ onMounted(load)
   font-size: 13px;
 }
 
-/* ── Bracket ──────────────────────────────────────────────── */
 .bracket {
   display: flex;
   gap: 20px;

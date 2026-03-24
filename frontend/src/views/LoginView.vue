@@ -15,13 +15,13 @@
       </div>
 
       <div class="form-group">
-        <label>Lozinka</label>
+        <label>Password</label>
         <input v-model="password" type="password" placeholder="••••••••" @keyup.enter="submit" />
       </div>
 
       <button class="btn btn-primary btn-full" :disabled="loading" @click="submit">
         <span v-if="loading" class="spinner"></span>
-        {{ loading ? 'Prijava...' : 'Prijavi se' }}
+        {{ loading ? 'Login' : 'Login' }}
       </button>
 
       <p class="auth-footer">

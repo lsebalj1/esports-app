@@ -2,9 +2,8 @@
   <div class="auth-page">
     <div class="auth-card card">
       <div class="auth-header">
-        <div class="auth-icon">⚔️</div>
-        <h1 class="auth-title">Registracija</h1>
-        <p class="auth-sub">Pridruži se platformi</p>
+        <h1 class="auth-title">Register</h1>
+        <p class="auth-sub">Join us</p>
       </div>
 
       <div v-if="error" class="alert alert-error">{{error}}</div>
@@ -24,21 +23,13 @@
         <input v-model="password" type="password" placeholder="min. 8 znakova" />
       </div>
 
-      <div class="form-group">
-        <label>Uloga</label>
-        <select v-model="role">
-          <option value="player">🎮 Igrač</option>
-          <option value="organizer">🏆 Organizator</option>
-        </select>
-      </div>
-
       <button class="btn btn-primary btn-full" :disabled="loading" @click="submit">
         <span v-if="loading" class="spinner"></span>
-        {{loading ? 'Registracija...' : 'Registriraj se'}}
+        {{loading ? 'Register...' : 'Register'}}
       </button>
 
       <p class="auth-footer">
-        Već imaš račun? <router-link to="/login">Prijavi se</router-link>
+        Already signed up? <router-link to="/login">Login</router-link>
       </p>
     </div>
   </div>
@@ -53,18 +44,18 @@ const router = useRouter()
 const username = ref('')
 const email = ref('')
 const password = ref('')
-const role = ref('player')
+const role = ref('observer')  
 const error = ref('')
 const loading = ref(false)
 
 async function submit() {
   error.value = ''
   if (!username.value || !email.value || !password.value) {
-    error.value = 'Popuni sva polja.'
+    error.value = 'All fields need to be filled.'
     return
   }
   if (password.value.length < 8) {
-    error.value = 'Lozinka mora imati najmanje 8 znakova.'
+    error.value = 'Password must be at least 8 characters.'
     return
   }
   loading.value = true

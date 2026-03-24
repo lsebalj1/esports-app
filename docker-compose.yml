@@ -104,7 +104,25 @@ services:
       - dynamodb-init
     networks:
       - esports-net
-  
+      
+  seed:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./seed.py:/app/seed.py
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=eu-central-1
+    command: >
+      sh -c "pip install boto3 passlib bcrypt -q &&
+             python seed.py"
+    depends_on:
+      - dynamodb-init
+    networks:
+      - esports-net
+
   frontend:
     build: ./frontend
     ports:

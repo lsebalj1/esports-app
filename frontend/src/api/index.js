@@ -21,7 +21,6 @@ async function request(url, options = {}) {
     throw new Error(err.detail || `HTTP ${res.status}`)
   }
 
-  // 204 No Content
   if (res.status === 204) return null
   return res.json()
 }
@@ -39,8 +38,6 @@ export const tournamentApi = {
   },
   get: (id) => request(`${BASE.tournaments}/${id}`),
   create: (data) => request(`${BASE.tournaments}`, { method: 'POST', body: JSON.stringify(data) }),
-  register: (id) => request(`${BASE.tournaments}/${id}/register`, { method: 'POST' }),
-  unregister: (id) => request(`${BASE.tournaments}/${id}/register`, { method: 'DELETE' }),
   getBracket: (id) => request(`${BASE.tournaments}/${id}/bracket`),
   generateBracket: (id) => request(`${BASE.tournaments}/${id}/bracket/generate`, { method: 'POST' }),
 }
