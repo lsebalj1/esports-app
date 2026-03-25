@@ -1,7 +1,15 @@
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">Turniri</h1>
+      <div>
+        <h1 class="page-title">
+          <template v-if="gameFilter">{{ gameFilter }}</template>
+          <template v-else>Turniri</template>
+        </h1>
+        <button v-if="gameFilter" class="clear-filter" @click="clearGameFilter">
+          ✕ Prikaži sve igre
+        </button>
+      </div>
       <button v-if="auth.isAdmin" class="btn btn-primary" @click="showForm = !showForm">
         {{ showForm ? 'X' : '+ Novi turnir' }}
       </button>
@@ -113,9 +121,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { tournamentApi } from '../api/index.js'
 import { authStore as auth } from '../stores/auth.js'
+
+const route = useRoute()
+const router = useRouter()
 
 const tournaments = ref([])
 const loading = ref(false)
@@ -123,6 +135,8 @@ const showForm = ref(false)
 const creating = ref(false)
 const createError = ref('')
 const activeFilter = ref('')
+
+const gameFilter = computed(() => route.query.game || '')
 
 const filters = [
   {label: 'Svi', value: ''},
@@ -142,7 +156,9 @@ const form = ref({
 async function load() {
   loading.value = true
   try {
-    const params = activeFilter.value ? { status: activeFilter.value } : {}
+    const params = {}
+    if (activeFilter.value) params.status = activeFilter.value
+    if (gameFilter.value) params.game = gameFilter.value
     tournaments.value = await tournamentApi.list(params)
   } catch (e) {
     console.error(e)
@@ -155,6 +171,14 @@ async function setFilter(val) {
   activeFilter.value = val
   await load()
 }
+
+function clearGameFilter() {
+  router.push('/tournaments')
+}
+
+watch(() => route.query.game, () => {
+  load()
+})
 
 async function createTournament() {
   createError.value = ''
@@ -181,7 +205,7 @@ async function createTournament() {
 }
 
 function statusLabel(s) {
-  const m = { registration: 'View', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
+  const m = { registration: 'Prijave', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
   return m[s] || s
 }
 
@@ -277,5 +301,20 @@ onMounted(load)
   font-size: 13px;
   color: var(--text-muted);
   margin-bottom: 10px;
+}
+
+.clear-filter {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 4px;
+  transition: color 0.2s;
+}
+
+.clear-filter:hover {
+  color: var(--accent);
 }
 </style>

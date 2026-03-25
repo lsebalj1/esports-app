@@ -69,6 +69,7 @@ tournaments_table = dynamodb.Table("Tournaments")
 admin = admins[0]
 
 TOURNAMENTS = [
+    # CS2 turniri
     {
         "name": "Zagreb Open 2025",
         "game": "CS2",
@@ -80,15 +81,26 @@ TOURNAMENTS = [
         "description": "Otvoreni turnir za sve igrace iz Hrvatske.",
     },
     {
-        "name": "Adriatic Cup",
-        "game": "Marvel Rivals",
-        "format": "single_elimination",
+        "name": "Pro League Season 3",
+        "game": "CS2",
+        "format": "round_robin",
         "max_participants": 8,
-        "prize_pool": "500.00",
-        "status": "in_progress",
-        "start_date": now(-3),
-        "description": "Regionalni turnir Jadranskog podrucja.",
+        "prize_pool": "2000.00",
+        "status": "draft",
+        "start_date": now(30),
+        "description": "Profesionalna liga — sezona 3.",
     },
+    {
+        "name": "Balkan Masters CS2",
+        "game": "CS2",
+        "format": "single_elimination",
+        "max_participants": 16,
+        "prize_pool": "5000.00",
+        "status": "registration",
+        "start_date": now(14),
+        "description": "Najveci CS2 turnir na Balkanu.",
+    },
+    # Valorant turniri
     {
         "name": "Summer Frag Fest",
         "game": "Valorant",
@@ -100,14 +112,192 @@ TOURNAMENTS = [
         "description": "Ljetni turnir u Valorantu.",
     },
     {
-        "name": "Pro League Season 3",
-        "game": "CS2",
+        "name": "Valorant Rookie Cup",
+        "game": "Valorant",
+        "format": "double_elimination",
+        "max_participants": 16,
+        "prize_pool": "500.00",
+        "status": "in_progress",
+        "start_date": now(-5),
+        "description": "Turnir za nove igrace.",
+    },
+    {
+        "name": "Split Showdown",
+        "game": "Valorant",
+        "format": "single_elimination",
+        "max_participants": 8,
+        "prize_pool": "750.00",
+        "status": "completed",
+        "start_date": now(-21),
+        "description": "Valorant turnir u Splitu.",
+    },
+    # Marvel Rivals turniri
+    {
+        "name": "Adriatic Cup",
+        "game": "Marvel Rivals",
+        "format": "single_elimination",
+        "max_participants": 8,
+        "prize_pool": "500.00",
+        "status": "in_progress",
+        "start_date": now(-3),
+        "description": "Regionalni turnir Jadranskog podrucja.",
+    },
+    {
+        "name": "Heroes Clash Zagreb",
+        "game": "Marvel Rivals",
+        "format": "single_elimination",
+        "max_participants": 16,
+        "prize_pool": "1500.00",
+        "status": "registration",
+        "start_date": now(10),
+        "description": "Marvel Rivals turnir u Zagrebu.",
+    },
+    # League of Legends turniri
+    {
+        "name": "LoL Balkan League",
+        "game": "League of Legends",
         "format": "round_robin",
         "max_participants": 8,
+        "prize_pool": "3000.00",
+        "status": "in_progress",
+        "start_date": now(-10),
+        "description": "Regionalna liga za League of Legends.",
+    },
+    {
+        "name": "Summoner's Cup HR",
+        "game": "League of Legends",
+        "format": "double_elimination",
+        "max_participants": 16,
         "prize_pool": "2000.00",
+        "status": "registration",
+        "start_date": now(21),
+        "description": "Hrvatski LoL turnir.",
+    },
+    # Dota 2 turniri
+    {
+        "name": "Dota Legends Open",
+        "game": "Dota 2",
+        "format": "single_elimination",
+        "max_participants": 8,
+        "prize_pool": "1500.00",
+        "status": "completed",
+        "start_date": now(-28),
+        "description": "Otvoreni Dota 2 turnir.",
+    },
+    {
+        "name": "Ancient Wars",
+        "game": "Dota 2",
+        "format": "double_elimination",
+        "max_participants": 16,
+        "prize_pool": "2500.00",
+        "status": "registration",
+        "start_date": now(18),
+        "description": "Kompetitivni Dota 2 turnir.",
+    },
+    # Fortnite turniri
+    {
+        "name": "Fortnite Friday",
+        "game": "Fortnite",
+        "format": "single_elimination",
+        "max_participants": 32,
+        "prize_pool": "500.00",
+        "status": "in_progress",
+        "start_date": now(-1),
+        "description": "Tjedni Fortnite turnir.",
+    },
+    {
+        "name": "Victory Royale Cup",
+        "game": "Fortnite",
+        "format": "single_elimination",
+        "max_participants": 64,
+        "prize_pool": "1000.00",
+        "status": "registration",
+        "start_date": now(5),
+        "description": "Veliki Fortnite turnir.",
+    },
+    # Rocket League turniri
+    {
+        "name": "Rocket Masters",
+        "game": "Rocket League",
+        "format": "double_elimination",
+        "max_participants": 8,
+        "prize_pool": "800.00",
+        "status": "completed",
+        "start_date": now(-35),
+        "description": "Rocket League masters turnir.",
+    },
+    {
+        "name": "Aerial Kings",
+        "game": "Rocket League",
+        "format": "single_elimination",
+        "max_participants": 16,
+        "prize_pool": "1200.00",
+        "status": "registration",
+        "start_date": now(12),
+        "description": "Turnir za najbolje Rocket League igrace.",
+    },
+    # Overwatch 2 turniri
+    {
+        "name": "Overwatch Spring Cup",
+        "game": "Overwatch 2",
+        "format": "single_elimination",
+        "max_participants": 8,
+        "prize_pool": "600.00",
+        "status": "in_progress",
+        "start_date": now(-2),
+        "description": "Proljetni OW2 turnir.",
+    },
+    {
+        "name": "Heroes United",
+        "game": "Overwatch 2",
+        "format": "round_robin",
+        "max_participants": 8,
+        "prize_pool": "1000.00",
+        "status": "registration",
+        "start_date": now(25),
+        "description": "OW2 liga.",
+    },
+    # Apex Legends turniri
+    {
+        "name": "Apex Predators HR",
+        "game": "Apex Legends",
+        "format": "single_elimination",
+        "max_participants": 20,
+        "prize_pool": "1500.00",
+        "status": "completed",
+        "start_date": now(-18),
+        "description": "Hrvatski Apex turnir.",
+    },
+    {
+        "name": "Battle Royale Championship",
+        "game": "Apex Legends",
+        "format": "single_elimination",
+        "max_participants": 30,
+        "prize_pool": "2000.00",
+        "status": "registration",
+        "start_date": now(8),
+        "description": "Veliki Apex Legends turnir.",
+    },
+    # Rainbow Six Siege turniri
+    {
+        "name": "Siege Masters",
+        "game": "Rainbow Six Siege",
+        "format": "double_elimination",
+        "max_participants": 8,
+        "prize_pool": "1000.00",
+        "status": "in_progress",
+        "start_date": now(-4),
+        "description": "R6 Siege masters turnir.",
+    },
+    {
+        "name": "Tactical Ops Cup",
+        "game": "Rainbow Six Siege",
+        "format": "single_elimination",
+        "max_participants": 16,
+        "prize_pool": "1500.00",
         "status": "draft",
-        "start_date": now(30),
-        "description": "Profesionalna liga — sezona 3.",
+        "start_date": now(35),
+        "description": "Takticka R6 liga.",
     },
 ]
 
@@ -158,138 +348,88 @@ def make_stats(won=False):
 
 created_matches = []
 
-completed_t = created_tournaments[0]
-t_players = observers.copy()
-random.shuffle(t_players)
+def generate_bracket_for_tournament(t, is_completed=False):
+    """Generate bracket and matches for a tournament."""
+    t_id = t["tournament_id"]
+    players = observers.copy()
+    random.shuffle(players)
+    
+    # Use only 8 players for simplicity
+    players = players[:8]
+    
+    all_matches = []
+    round_players = players
+    round_num = 1
+    
+    while len(round_players) > 1:
+        next_round = []
+        for pos, (p1, p2) in enumerate(zip(round_players[::2], round_players[1::2]), start=1):
+            m_id = uid()
+            
+            if is_completed or round_num < 3:  # Complete earlier rounds
+                winner = random.choice([p1, p2])
+                match = {
+                    "match_id": m_id,
+                    "tournament_id": t_id,
+                    "round": round_num,
+                    "position": pos,
+                    "player1_id": p1["user_id"],
+                    "player1_name": p1["username"],
+                    "player2_id": p2["user_id"],
+                    "player2_name": p2["username"],
+                    "winner_id": winner["user_id"],
+                    "status": "completed",
+                    "player1_stats": make_stats(p1 == winner),
+                    "player2_stats": make_stats(p2 == winner),
+                    "duration_seconds": random.randint(1200, 3600),
+                    "scheduled_at": now(-10 + round_num),
+                    "completed_at": now(-9 + round_num),
+                }
+                next_round.append(winner)
+            else:  # Leave later rounds pending for in_progress
+                match = {
+                    "match_id": m_id,
+                    "tournament_id": t_id,
+                    "round": round_num,
+                    "position": pos,
+                    "player1_id": p1["user_id"] if p1 else None,
+                    "player1_name": p1["username"] if p1 else None,
+                    "player2_id": p2["user_id"] if p2 else None,
+                    "player2_name": p2["username"] if p2 else None,
+                    "winner_id": None,
+                    "status": "pending",
+                    "player1_stats": None,
+                    "player2_stats": None,
+                    "duration_seconds": None,
+                    "scheduled_at": now(round_num),
+                    "completed_at": None,
+                }
+                next_round.append(p1)  # placeholder
+            
+            matches_table.put_item(Item=match)
+            created_matches.append(match)
+            all_matches.append(match)
+        
+        round_players = next_round
+        round_num += 1
+    
+    # Update tournament with bracket
+    tournaments_table.update_item(
+        Key={"tournament_id": t_id},
+        UpdateExpression="SET bracket = :b",
+        ExpressionAttributeValues={":b": all_matches},
+    )
+    
+    return all_matches
 
-r1_winners = []
-for pos, (p1, p2) in enumerate(zip(t_players[::2], t_players[1::2]), start=1):
-    winner = random.choice([p1, p2])
-    m_id = uid()
-    match = {
-        "match_id": m_id,
-        "tournament_id": completed_t["tournament_id"],
-        "round": 1,
-        "position": pos,
-        "player1_id": p1["user_id"],
-        "player1_name": p1["username"],
-        "player2_id": p2["user_id"],
-        "player2_name": p2["username"],
-        "winner_id": winner["user_id"],
-        "status": "completed",
-        "player1_stats": make_stats(p1 == winner),
-        "player2_stats": make_stats(p2 == winner),
-        "duration_seconds": random.randint(1200, 3600),
-        "scheduled_at": now(-14),
-        "completed_at": now(-13),
-    }
-    matches_table.put_item(Item=match)
-    created_matches.append(match)
-    r1_winners.append(winner)
-    print(f"R1M{pos} {p1['username']:15} vs {p2['username']:15} -> {winner['username']}")
-
-r2_winners = []
-for pos, (p1, p2) in enumerate(zip(r1_winners[::2], r1_winners[1::2]), start=1):
-    winner = random.choice([p1, p2])
-    m_id = uid()
-    match = {
-        "match_id": m_id,
-        "tournament_id": completed_t["tournament_id"],
-        "round": 2,
-        "position": pos,
-        "player1_id": p1["user_id"],
-        "player1_name": p1["username"],
-        "player2_id": p2["user_id"],
-        "player2_name": p2["username"],
-        "winner_id": winner["user_id"],
-        "status": "completed",
-        "player1_stats": make_stats(p1 == winner),
-        "player2_stats": make_stats(p2 == winner),
-        "duration_seconds": random.randint(1800, 4200),
-        "scheduled_at": now(-12),
-        "completed_at": now(-11),
-    }
-    matches_table.put_item(Item=match)
-    created_matches.append(match)
-    r2_winners.append(winner)
-    print(f"R2M{pos} {p1['username']:15} vs {p2['username']:15} -> {winner['username']}")
-
-p1, p2 = r2_winners[0], r2_winners[1]
-champion = random.choice([p1, p2])
-m_id = uid()
-final_match = {
-    "match_id": m_id,
-    "tournament_id": completed_t["tournament_id"],
-    "round": 3,
-    "position": 1,
-    "player1_id": p1["user_id"],
-    "player1_name": p1["username"],
-    "player2_id": p2["user_id"],
-    "player2_name": p2["username"],
-    "winner_id": champion["user_id"],
-    "status": "completed",
-    "player1_stats": make_stats(p1 == champion),
-    "player2_stats": make_stats(p2 == champion),
-    "duration_seconds": random.randint(2400, 5400),
-    "scheduled_at": now(-10),
-    "completed_at": now(-10),
-}
-matches_table.put_item(Item=final_match)
-created_matches.append(final_match)
-print(f"FINALE {p1['username']:15} vs {p2['username']:15} -> pobjednik: {champion['username']}")
-
-in_progress_t = created_tournaments[1]
-t_players2 = observers.copy()
-random.shuffle(t_players2)
-
-r1w_2 = []
-for pos, (p1, p2) in enumerate(zip(t_players2[::2], t_players2[1::2]), start=1):
-    winner = random.choice([p1, p2])
-    m_id = uid()
-    match = {
-        "match_id": m_id,
-        "tournament_id": in_progress_t["tournament_id"],
-        "round": 1,
-        "position": pos,
-        "player1_id": p1["user_id"],
-        "player1_name": p1["username"],
-        "player2_id": p2["user_id"],
-        "player2_name": p2["username"],
-        "winner_id": winner["user_id"],
-        "status": "completed",
-        "player1_stats": make_stats(p1 == winner),
-        "player2_stats": make_stats(p2 == winner),
-        "duration_seconds": random.randint(1200, 3600),
-        "scheduled_at": now(-3),
-        "completed_at": now(-2),
-    }
-    matches_table.put_item(Item=match)
-    created_matches.append(match)
-    r1w_2.append(winner)
-
-for pos, (p1, p2) in enumerate(zip(r1w_2[::2], r1w_2[1::2]), start=1):
-    m_id = uid()
-    match = {
-        "match_id": m_id,
-        "tournament_id": in_progress_t["tournament_id"],
-        "round": 2,
-        "position": pos,
-        "player1_id": p1["user_id"],
-        "player1_name": p1["username"],
-        "player2_id": p2["user_id"],
-        "player2_name": p2["username"],
-        "winner_id": None,
-        "status": "pending",
-        "player1_stats": None,
-        "player2_stats": None,
-        "duration_seconds": None,
-        "scheduled_at": now(1),
-        "completed_at": None,
-    }
-    matches_table.put_item(Item=match)
-    created_matches.append(match)
-
-print(f"Adriatic Cup: runda 1 zavrsena, runda 2 pending")
+# Generate brackets for completed and in_progress tournaments
+for t in created_tournaments:
+    if t["status"] == "completed":
+        matches = generate_bracket_for_tournament(t, is_completed=True)
+        print(f"  ✓ {t['name']}: {len(matches)} meceva (completed)")
+    elif t["status"] == "in_progress":
+        matches = generate_bracket_for_tournament(t, is_completed=False)
+        print(f"  ⏳ {t['name']}: {len(matches)} meceva (in_progress)")
 
 print("\nRacunanje statistika...")
 

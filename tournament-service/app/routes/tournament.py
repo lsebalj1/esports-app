@@ -56,7 +56,7 @@ async def create_tournament(payload: CreateTournamentRequest, user: dict = Depen
     item = {
         "tournament_id": tournament_id,
         "name": payload.name,
-        "game": payload.game,
+        "game": payload.game.value,
         "format": payload.format.value,
         "max_participants": payload.max_participants,
         "current_participants": 0,
@@ -78,7 +78,7 @@ async def create_tournament(payload: CreateTournamentRequest, user: dict = Depen
         {
             "tournament_id": tournament_id,
             "name": payload.name,
-            "game": payload.game,
+            "game": payload.game.value,
             "admin_id": user["user_id"],
         },
     )
