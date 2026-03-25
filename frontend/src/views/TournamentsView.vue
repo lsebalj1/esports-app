@@ -18,7 +18,19 @@
         </div>
         <div class="form-group">
           <label>Igra</label>
-          <input v-model="form.game" type="text" placeholder="Marvel Rivals" />
+          <select v-model="form.game">
+            <option value="">-- Odaberi igru --</option>
+            <option value="CS2">CS2</option>
+            <option value="Valorant">Valorant</option>
+            <option value="League of Legends">League of Legends</option>
+            <option value="Dota 2">Dota 2</option>
+            <option value="Fortnite">Fortnite</option>
+            <option value="Rocket League">Rocket League</option>
+            <option value="Overwatch 2">Overwatch 2</option>
+            <option value="Apex Legends">Apex Legends</option>
+            <option value="Rainbow Six Siege">Rainbow Six Siege</option>
+            <option value="Marvel Rivals">Marvel Rivals</option>
+          </select>
         </div>
       </div>
 
@@ -71,7 +83,6 @@
     </div>
 
     <div v-else-if="!tournaments.length" class="empty">
-      <div class="empty-icon">🏆</div>
       <div class="empty-text">Nema turnira.</div>
     </div>
 
@@ -115,7 +126,6 @@ const activeFilter = ref('')
 
 const filters = [
   {label: 'Svi', value: ''},
-  {label: 'Registracija', value: 'registration'},
   {label: 'U tijeku', value: 'in_progress'},
   {label: 'Završeni', value: 'completed'},
 ]
@@ -171,7 +181,7 @@ async function createTournament() {
 }
 
 function statusLabel(s) {
-  const m = { registration: 'Registracija', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
+  const m = { registration: 'View', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
   return m[s] || s
 }
 

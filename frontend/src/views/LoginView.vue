@@ -2,7 +2,7 @@
   <div class="auth-page">
     <div class="auth-card card">
       <div class="auth-header">
-        <div class="auth-icon">🎮</div>
+        <div class="auth-icon"></div>
         <h1 class="auth-title">Prijava</h1>
         <p class="auth-sub">Dobrodošao natrag</p>
       </div>

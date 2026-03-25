@@ -3,7 +3,7 @@ import uuid
 import random
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
-from passlib.context import CryptContext
+import bcrypt
 import os
 
 ENDPOINT = os.getenv("DYNAMODB_ENDPOINT", "http://localhost:8000")
@@ -17,7 +17,8 @@ dynamodb = boto3.resource(
     aws_secret_access_key="local",
 )
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def now(offset_days=0):
     return (datetime.now(timezone.utc) + timedelta(days=offset_days)).isoformat()
@@ -49,7 +50,7 @@ for u in USERS:
         "user_id": user_id,
         "username": u["username"],
         "email": u["email"],
-        "password_hash": pwd_context.hash("lozinka123"),
+        "password_hash": hash_password("lozinka123"),
         "role": u["role"],
         "is_active": True,
         "created_at": now(-30),

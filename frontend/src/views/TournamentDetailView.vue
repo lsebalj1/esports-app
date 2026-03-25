@@ -35,19 +35,6 @@
       <div v-if="error" class="alert alert-error">{{ error }}</div>
       <div v-if="success" class="alert alert-success">{{ success }}</div>
 
-      <div class="actions">
-        <template v-if="auth.isLoggedIn && tournament.status === 'registration' && !auth.isAdmin">
-          <button v-if="!isRegistered" class="btn btn-primary" :disabled="actionLoading" @click="register">
-            <span v-if="actionLoading" class="spinner"></span>
-            Prijavi se na turnir
-          </button>
-          <button v-else class="btn btn-danger" :disabled="actionLoading" @click="unregister">
-            <span v-if="actionLoading" class="spinner"></span>
-            Odjavi se
-          </button>
-        </template>
-      </div>
-
       <div v-if="bracket" class="card section">
         <h2 class="section-title">Bracket</h2>
         <div class="bracket">
@@ -96,12 +83,6 @@ const actionLoading = ref(false)
 const error = ref('')
 const success = ref('')
 
-const participants = computed(() => tournament.value?.participants || [])
-
-const isRegistered = computed(() =>
-  auth.isLoggedIn && participants.value.some(p => p.user_id === auth.user?.user_id)
-)
-
 const rounds = computed(() => {
   if (!bracket.value) return []
   const max = Math.max(...bracket.value.matches.map(m => m.round))
@@ -124,37 +105,6 @@ async function load() {
   }
 }
 
-async function register() {
-  error.value = ''
-  success.value = ''
-  actionLoading.value = true
-  try {
-    await tournamentApi.register(id)
-    success.value = 'Uspješno si se prijavio!'
-    await load()
-  } catch (e) {
-    error.value = e.message
-  } finally {
-    actionLoading.value = false
-  }
-}
-
-async function unregister() {
-  error.value = ''
-  success.value = ''
-  
-  actionLoading.value = true
-  try {
-    await tournamentApi.unregister(id)
-    success.value = 'Odjavljen si s turnira.'
-    await load()
-  } catch (e) {
-    error.value = e.message
-  } finally {
-    actionLoading.value = false
-  }
-}
-
 async function generateBracket() {
   error.value = ''
   success.value = ''
@@ -171,7 +121,7 @@ async function generateBracket() {
 }
 
 function statusLabel(s) {
-  const m = {registration: 'Registracija', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
+  const m = {registration: 'Details', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
   return m[s] || s
 }
 
