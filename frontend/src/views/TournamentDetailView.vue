@@ -9,15 +9,19 @@
         <div>
           <button class="btn btn-secondary btn-sm back-btn" @click="$router.push('/tournaments')">← Natrag</button>
           <h1 class="page-title">{{ tournament.name }}</h1>
-          <div class="t-game">{{ tournament.game }}</div>
+          <div class="t-meta">
+            <span class="t-game">{{ tournament.game }}</span>
+            <span class="t-format">{{ tournament.match_format.toUpperCase() }}</span>
+            <span class="t-teamsize">{{ tournament.team_size }}v{{ tournament.team_size }}</span>
+          </div>
         </div>
         <span class="badge" :class="`badge-${tournament.status}`">{{ statusLabel(tournament.status) }}</span>
       </div>
 
       <div class="info-grid">
         <div class="info-item card">
-          <div class="info-label">Igrači</div>
-          <div class="info-value">{{ tournament.current_participants }} / {{ tournament.max_participants }}</div>
+          <div class="info-label">Timovi</div>
+          <div class="info-value">{{ tournament.current_teams }} / {{ tournament.max_teams }}</div>
         </div>
         <div class="info-item card">
           <div class="info-label">Format</div>
@@ -25,7 +29,7 @@
         </div>
         <div class="info-item card">
           <div class="info-label">Nagradni fond</div>
-          <div class="info-value">{{ tournament.prize_pool ? '$' + tournament.prize_pool : '—' }}</div>
+          <div class="info-value">{{ tournament.prize_pool ? '$' + Number(tournament.prize_pool).toLocaleString() : '—' }}</div>
         </div>
         <div class="info-item card">
           <div class="info-label">Početak</div>
@@ -33,7 +37,7 @@
         </div>
       </div>
 
-      <!-- Admin actions -->
+      <!-- Admin -->
       <div v-if="auth.isAdmin" class="actions">
         <button
           v-if="canGenerateBracket"
@@ -63,22 +67,24 @@
               @click="openMatchModal(match)"
             >
               <div
-                class="bracket-player"
-                :class="{ winner: match.winner_id === match.player1_id, bye: !match.player1_id }"
+                class="bracket-team"
+                :class="{ winner: match.winner_id === match.team1_id, bye: !match.team1_id }"
               >
-                {{ match.player1_name || 'TBD' }}
-                <span v-if="match.player1_stats" class="player-score">{{ match.player1_stats.score }}</span>
+                <span class="team-name">{{ match.team1_name || 'TBD' }}</span>
+                <span class="team-score">{{ match.team1_maps_won }}</span>
               </div>
-              <div class="bracket-vs">vs</div>
+              <div class="bracket-vs">
+                <span class="match-format-badge">{{ match.match_format }}</span>
+              </div>
               <div
-                class="bracket-player"
-                :class="{ winner: match.winner_id === match.player2_id, bye: !match.player2_id }"
+                class="bracket-team"
+                :class="{ winner: match.winner_id === match.team2_id, bye: !match.team2_id }"
               >
-                {{ match.player2_name || 'TBD' }}
-                <span v-if="match.player2_stats" class="player-score">{{ match.player2_stats.score }}</span>
+                <span class="team-name">{{ match.team2_name || 'TBD' }}</span>
+                <span class="team-score">{{ match.team2_maps_won }}</span>
               </div>
               <div v-if="match.status === 'pending' && auth.isAdmin" class="match-status-indicator">
-                ⏳ Čeka rezultat
+                 Čeka rezultat
               </div>
             </div>
           </div>
@@ -102,61 +108,80 @@
         <div class="modal-body">
           <div class="match-info">
             <span class="badge" :class="`badge-${selectedMatch.status}`">{{ matchStatusLabel(selectedMatch.status) }}</span>
+            <span class="match-format-label">{{ selectedMatch.match_format?.toUpperCase() }}</span>
             <span v-if="selectedMatch.duration_seconds" class="match-duration">
               ⏱ {{ formatDuration(selectedMatch.duration_seconds) }}
             </span>
           </div>
 
-          <div class="match-players">
-            <div class="match-player" :class="{ winner: selectedMatch.winner_id === selectedMatch.player1_id }">
-              <div class="player-name">{{ selectedMatch.player1_name || 'TBD' }}</div>
-              <div v-if="selectedMatch.player1_stats" class="player-stats">
-                <div class="stat">
-                  <span class="stat-value">{{ selectedMatch.player1_stats.kills }}</span>
-                  <span class="stat-label">Kills</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value">{{ selectedMatch.player1_stats.deaths }}</span>
-                  <span class="stat-label">Deaths</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value">{{ selectedMatch.player1_stats.assists }}</span>
-                  <span class="stat-label">Assists</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value">{{ selectedMatch.player1_stats.score }}</span>
-                  <span class="stat-label">Score</span>
-                </div>
-              </div>
+          <div class="match-score">
+            <div class="score-team" :class="{ winner: selectedMatch.winner_id === selectedMatch.team1_id }">
+              <div class="score-team-name">{{ selectedMatch.team1_name || 'TBD' }}</div>
+              <div class="score-value">{{ selectedMatch.team1_maps_won }}</div>
             </div>
+            <div class="score-separator">:</div>
+            <div class="score-team" :class="{ winner: selectedMatch.winner_id === selectedMatch.team2_id }">
+              <div class="score-value">{{ selectedMatch.team2_maps_won }}</div>
+              <div class="score-team-name">{{ selectedMatch.team2_name || 'TBD' }}</div>
+            </div>
+          </div>
 
-            <div class="vs-divider">VS</div>
-
-            <div class="match-player" :class="{ winner: selectedMatch.winner_id === selectedMatch.player2_id }">
-              <div class="player-name">{{ selectedMatch.player2_name || 'TBD' }}</div>
-              <div v-if="selectedMatch.player2_stats" class="player-stats">
-                <div class="stat">
-                  <span class="stat-value">{{ selectedMatch.player2_stats.kills }}</span>
-                  <span class="stat-label">Kills</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value">{{ selectedMatch.player2_stats.deaths }}</span>
-                  <span class="stat-label">Deaths</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value">{{ selectedMatch.player2_stats.assists }}</span>
-                  <span class="stat-label">Assists</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value">{{ selectedMatch.player2_stats.score }}</span>
-                  <span class="stat-label">Score</span>
-                </div>
+          <div v-if="selectedMatch.map_results?.length" class="map-results">
+            <h4>Rezultati po mapama</h4>
+            <div class="map-list">
+              <div v-for="map in selectedMatch.map_results" :key="map.map_number" class="map-item">
+                <span class="map-number">Map {{ map.map_number }}</span>
+                <span class="map-name">{{ map.map_name }}</span>
+                <span class="map-score">
+                  <span :class="{ 'map-winner': map.winner_team_id === selectedMatch.team1_id }">{{ map.team1_score }}</span>
+                  :
+                  <span :class="{ 'map-winner': map.winner_team_id === selectedMatch.team2_id }">{{ map.team2_score }}</span>
+                </span>
               </div>
             </div>
           </div>
 
-          <!-- Admin: Submit Result -->
-          <div v-if="auth.isAdmin && selectedMatch.status === 'pending' && selectedMatch.player1_id && selectedMatch.player2_id" class="submit-result">
+          <div v-if="selectedMatch.team1_stats || selectedMatch.team2_stats" class="team-stats-section">
+            <h4>Statistike igrača</h4>
+            <div class="teams-stats">
+              <div class="team-stats-block" v-if="selectedMatch.team1_stats">
+                <h5 :class="{ winner: selectedMatch.winner_id === selectedMatch.team1_id }">{{ selectedMatch.team1_name }}</h5>
+                <table class="stats-table">
+                  <thead>
+                    <tr><th>Igrač</th><th>K</th><th>D</th><th>A</th><th>Score</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="p in selectedMatch.team1_stats.players" :key="p.player_id">
+                      <td>{{ p.player_name }}</td>
+                      <td>{{ p.kills }}</td>
+                      <td>{{ p.deaths }}</td>
+                      <td>{{ p.assists }}</td>
+                      <td>{{ p.score }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="team-stats-block" v-if="selectedMatch.team2_stats">
+                <h5 :class="{ winner: selectedMatch.winner_id === selectedMatch.team2_id }">{{ selectedMatch.team2_name }}</h5>
+                <table class="stats-table">
+                  <thead>
+                    <tr><th>Igrač</th><th>K</th><th>D</th><th>A</th><th>Score</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="p in selectedMatch.team2_stats.players" :key="p.player_id">
+                      <td>{{ p.player_name }}</td>
+                      <td>{{ p.kills }}</td>
+                      <td>{{ p.deaths }}</td>
+                      <td>{{ p.assists }}</td>
+                      <td>{{ p.score }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="auth.isAdmin && selectedMatch.status === 'pending' && selectedMatch.team1_id && selectedMatch.team2_id" class="submit-result">
             <h4>Unesi rezultat</h4>
             
             <div class="result-form">
@@ -164,35 +189,25 @@
                 <label>Pobjednik</label>
                 <select v-model="resultForm.winner_id">
                   <option value="">-- Odaberi --</option>
-                  <option :value="selectedMatch.player1_id">{{ selectedMatch.player1_name }}</option>
-                  <option :value="selectedMatch.player2_id">{{ selectedMatch.player2_name }}</option>
+                  <option :value="selectedMatch.team1_id">{{ selectedMatch.team1_name }}</option>
+                  <option :value="selectedMatch.team2_id">{{ selectedMatch.team2_name }}</option>
                 </select>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>{{ selectedMatch.team1_name }} mape</label>
+                  <input v-model.number="resultForm.team1_maps_won" type="number" min="0" :max="getMaxMaps()" />
+                </div>
+                <div class="form-group">
+                  <label>{{ selectedMatch.team2_name }} mape</label>
+                  <input v-model.number="resultForm.team2_maps_won" type="number" min="0" :max="getMaxMaps()" />
+                </div>
               </div>
 
               <div class="form-group">
                 <label>Trajanje (sekunde)</label>
-                <input v-model.number="resultForm.duration_seconds" type="number" min="0" placeholder="1800" />
-              </div>
-
-              <div class="stats-inputs">
-                <div class="stats-column">
-                  <h5>{{ selectedMatch.player1_name }}</h5>
-                  <div class="form-row">
-                    <input v-model.number="resultForm.player1_stats.kills" type="number" min="0" placeholder="K" />
-                    <input v-model.number="resultForm.player1_stats.deaths" type="number" min="0" placeholder="D" />
-                    <input v-model.number="resultForm.player1_stats.assists" type="number" min="0" placeholder="A" />
-                    <input v-model.number="resultForm.player1_stats.score" type="number" min="0" placeholder="Score" />
-                  </div>
-                </div>
-                <div class="stats-column">
-                  <h5>{{ selectedMatch.player2_name }}</h5>
-                  <div class="form-row">
-                    <input v-model.number="resultForm.player2_stats.kills" type="number" min="0" placeholder="K" />
-                    <input v-model.number="resultForm.player2_stats.deaths" type="number" min="0" placeholder="D" />
-                    <input v-model.number="resultForm.player2_stats.assists" type="number" min="0" placeholder="A" />
-                    <input v-model.number="resultForm.player2_stats.score" type="number" min="0" placeholder="Score" />
-                  </div>
-                </div>
+                <input v-model.number="resultForm.duration_seconds" type="number" min="0" placeholder="3600" />
               </div>
 
               <div v-if="submitError" class="alert alert-error">{{ submitError }}</div>
@@ -227,21 +242,20 @@ const actionLoading = ref(false)
 const error = ref('')
 const success = ref('')
 
-// Modal state
 const selectedMatch = ref(null)
 const submitLoading = ref(false)
 const submitError = ref('')
 const resultForm = ref({
   winner_id: '',
+  team1_maps_won: 0,
+  team2_maps_won: 0,
   duration_seconds: null,
-  player1_stats: { kills: 0, deaths: 0, assists: 0, score: 0 },
-  player2_stats: { kills: 0, deaths: 0, assists: 0, score: 0 },
 })
 
 const canGenerateBracket = computed(() => {
   return tournament.value && 
     ['registration', 'draft'].includes(tournament.value.status) &&
-    tournament.value.current_participants >= 2
+    tournament.value.current_teams >= 2
 })
 
 const rounds = computed(() => {
@@ -262,18 +276,23 @@ function roundLabel(round) {
   return `Runda ${round}`
 }
 
+function getMaxMaps() {
+  const format = selectedMatch.value?.match_format || 'bo3'
+  if (format === 'bo1') return 1
+  if (format === 'bo3') return 2
+  return 3
+}
+
 async function load() {
   loading.value = true
   error.value = ''
   try {
     tournament.value = await tournamentApi.get(id)
     
-    // Load matches from match-service
     if (!['registration', 'draft'].includes(tournament.value.status)) {
       try {
         matches.value = await matchApi.byTournament(id)
       } catch (e) {
-        // Fallback to bracket from tournament-service
         try {
           const bracket = await tournamentApi.getBracket(id)
           matches.value = bracket.matches || []
@@ -308,9 +327,9 @@ function openMatchModal(match) {
   submitError.value = ''
   resultForm.value = {
     winner_id: '',
+    team1_maps_won: 0,
+    team2_maps_won: 0,
     duration_seconds: null,
-    player1_stats: { kills: 0, deaths: 0, assists: 0, score: 0 },
-    player2_stats: { kills: 0, deaths: 0, assists: 0, score: 0 },
   }
 }
 
@@ -324,13 +343,12 @@ async function submitResult() {
   try {
     const data = {
       winner_id: resultForm.value.winner_id,
+      team1_maps_won: resultForm.value.team1_maps_won,
+      team2_maps_won: resultForm.value.team2_maps_won,
       duration_seconds: resultForm.value.duration_seconds || null,
-      player1_stats: resultForm.value.player1_stats,
-      player2_stats: resultForm.value.player2_stats,
     }
     await matchApi.submitResult(selectedMatch.value.match_id, data)
     
-    // Reload matches
     matches.value = await matchApi.byTournament(id)
     closeModal()
     success.value = 'Rezultat uspješno spremljen!'
@@ -361,9 +379,10 @@ function formatDate(d) {
 }
 
 function formatDuration(seconds) {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, '0')}`
+  const hours = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
+  if (hours > 0) return `${hours}h ${mins}m`
+  return `${mins}m`
 }
 
 onMounted(load)
@@ -371,7 +390,24 @@ onMounted(load)
 
 <style scoped>
 .back-btn { margin-bottom: 8px; }
-.t-game { color: var(--accent); font-size: 14px; margin-top: 2px; }
+
+.t-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.t-game { color: var(--accent); font-size: 14px; font-weight: 600; }
+.t-format { 
+  font-size: 11px; 
+  font-weight: 700; 
+  padding: 2px 8px; 
+  background: var(--accent-dim); 
+  color: var(--accent); 
+  border-radius: 4px; 
+}
+.t-teamsize { font-size: 13px; color: var(--text-muted); }
 
 .info-grid {
   display: grid;
@@ -402,7 +438,7 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-width: 200px;
+  min-width: 220px;
 }
 
 .round-label {
@@ -420,13 +456,10 @@ onMounted(load)
   border-radius: var(--radius-sm);
   overflow: hidden;
   transition: all 0.2s;
-}
-
-.bracket-match.clickable {
   cursor: pointer;
 }
 
-.bracket-match.clickable:hover {
+.bracket-match:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -434,7 +467,7 @@ onMounted(load)
 
 .bracket-match.completed { border-color: var(--accent); }
 
-.bracket-player {
+.bracket-team {
   padding: 10px 12px;
   font-size: 13px;
   font-weight: 500;
@@ -443,31 +476,44 @@ onMounted(load)
   align-items: center;
 }
 
-.bracket-player.winner {
+.bracket-team.winner {
   background: var(--accent-dim);
+}
+
+.bracket-team.winner .team-name {
   color: var(--accent);
   font-weight: 700;
 }
 
-.bracket-player.bye {
+.bracket-team.bye {
   color: var(--text-muted);
   font-style: italic;
 }
 
-.player-score {
-  font-size: 12px;
-  opacity: 0.8;
+.team-score {
+  font-size: 16px;
+  font-weight: 700;
+  min-width: 24px;
+  text-align: center;
+}
+
+.bracket-team.winner .team-score {
+  color: var(--accent);
 }
 
 .bracket-vs {
   text-align: center;
-  font-size: 10px;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 2px 0;
+  padding: 4px 0;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+
+.match-format-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .match-status-indicator {
@@ -499,7 +545,7 @@ onMounted(load)
   border: 1px solid var(--border);
   border-radius: var(--radius);
   width: 100%;
-  max-width: 600px;
+  max-width: 700px;
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -512,10 +558,7 @@ onMounted(load)
   border-bottom: 1px solid var(--border);
 }
 
-.modal-header h3 {
-  font-size: 16px;
-  font-weight: 700;
-}
+.modal-header h3 { font-size: 16px; font-weight: 700; }
 
 .modal-close {
   background: none;
@@ -528,9 +571,7 @@ onMounted(load)
 
 .modal-close:hover { color: var(--text); }
 
-.modal-body {
-  padding: 20px;
-}
+.modal-body { padding: 20px; }
 
 .match-info {
   display: flex;
@@ -539,72 +580,91 @@ onMounted(load)
   margin-bottom: 20px;
 }
 
-.match-duration {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.match-players {
-  display: flex;
-  gap: 16px;
-  align-items: stretch;
-}
-
-.match-player {
-  flex: 1;
+.match-format-label {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
   background: var(--surface2);
-  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.match-duration { font-size: 13px; color: var(--text-muted); }
+
+/* Score display */
+.match-score {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+}
+
+.score-team {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.score-team:first-child { flex-direction: row; }
+.score-team:last-child { flex-direction: row-reverse; }
+
+.score-team-name { font-size: 16px; font-weight: 600; }
+.score-value { font-size: 32px; font-weight: 700; }
+.score-team.winner .score-team-name { color: var(--accent); }
+.score-team.winner .score-value { color: var(--accent); }
+.score-separator { font-size: 24px; color: var(--text-muted); }
+
+/* Map results */
+.map-results { margin-bottom: 24px; }
+.map-results h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+
+.map-list { display: flex; flex-direction: column; gap: 8px; }
+
+.map-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--surface2);
   border-radius: var(--radius-sm);
-  padding: 16px;
-  text-align: center;
 }
 
-.match-player.winner {
-  border-color: var(--accent);
-  background: var(--accent-dim);
+.map-number { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+.map-name { flex: 1; font-size: 13px; }
+.map-score { font-weight: 700; }
+.map-winner { color: var(--accent); }
+
+/* Team stats */
+.team-stats-section h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.teams-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.team-stats-block h5 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.team-stats-block h5.winner { color: var(--accent); }
+
+.stats-table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
 }
 
-.player-name {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 12px;
+.stats-table th, .stats-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
 }
 
-.match-player.winner .player-name {
-  color: var(--accent);
-}
-
-.player-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.stat-label {
-  font-size: 10px;
+.stats-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 11px;
   text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
 }
 
-.vs-divider {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-muted);
-}
+.stats-table td:first-child { font-weight: 500; }
+.stats-table td:not(:first-child) { text-align: center; }
+.stats-table th:not(:first-child) { text-align: center; }
 
 /* Submit result form */
 .submit-result {
@@ -613,46 +673,16 @@ onMounted(load)
   border-top: 1px solid var(--border);
 }
 
-.submit-result h4 {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 16px;
-}
+.submit-result h4 { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
 
-.result-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+.result-form { display: flex; flex-direction: column; gap: 16px; }
 
-.stats-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.stats-column h5 {
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-}
-
-.form-row {
-  display: flex;
-  gap: 8px;
-}
-
-.form-row input {
-  width: 100%;
-  text-align: center;
-}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
 @media (max-width: 600px) {
   .info-grid { grid-template-columns: 1fr 1fr; }
-  .match-players { flex-direction: column; }
-  .vs-divider { justify-content: center; padding: 8px 0; }
-  .stats-inputs { grid-template-columns: 1fr; }
-  .player-stats { grid-template-columns: repeat(2, 1fr); }
+  .teams-stats { grid-template-columns: 1fr; }
+  .match-score { flex-direction: column; gap: 12px; }
+  .score-team { flex-direction: column !important; gap: 4px; }
 }
 </style>

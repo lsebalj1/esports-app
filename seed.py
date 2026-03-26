@@ -26,21 +26,43 @@ def now(offset_days=0):
 def uid():
     return str(uuid.uuid4())
 
+GAME_TEAM_SIZE = {
+    "CS2": 5,
+    "Valorant": 5,
+    "League of Legends": 5,
+    "Dota 2": 5,
+    "Fortnite": 4,
+    "Rocket League": 3,
+    "Overwatch 2": 5,
+    "Apex Legends": 3,
+    "Rainbow Six Siege": 5,
+    "Marvel Rivals": 6,
+}
+
+TEAM_NAMES = [
+    "Natus Vincere", "G2 Esports", "FaZe Clan", "Team Liquid", "Cloud9",
+    "Fnatic", "Evil Geniuses", "100 Thieves", "TSM", "Gen.G",
+    "T1", "DRX", "LOUD", "Paper Rex", "Sentinels",
+    "NRG", "Vitality", "BIG", "MOUZ", "Heroic",
+    "ENCE", "Astralis", "Complexity", "OG", "Team Spirit",
+]
+
+PLAYER_NAMES = [
+    "s1mple", "ZywOo", "NiKo", "dev1ce", "m0NESY", "sh1ro", "blameF", "ropz", "Twistzz", "EliGE",
+    "TenZ", "yay", "Derke", "cNed", "ScreaM", "Chronicle", "nAts", "Sacy", "aspas", "Less",
+    "Faker", "Caps", "Chovy", "ShowMaker", "Knight", "Ruler", "Gumayusi", "Viper", "Keria", "Zeus",
+    "Topson", "ana", "Miracle", "Ame", "NothingToSay", "Faith_bian", "y`", "XinQ", "Yatoro", "Miposhka",
+    "Lethamyr", "jstn", "Squishy", "GarrettG", "Firstkiller", "Monkey Moon", "rise", "Vatira", "zen", "Seikoo",
+    "Proper", "Kevster", "Lip", "Fleta", "Shy", "Profit", "Leave", "Pelican", "Mer1t", "Kilo",
+]
+
 print("Kreiranje korisnika...")
 
 users_table = dynamodb.Table("Users")
 
 USERS = [
-    {"username": "admin",        "email": "admin@esports.com",  "role": "admin"},
-    {"username": "mod_marko",    "email": "marko@esports.com",  "role": "admin"},
-    {"username": "sniper_king",  "email": "sniper@test.com",    "role": "observer"},
-    {"username": "headshot_hr",  "email": "headshot@test.com",  "role": "observer"},
-    {"username": "rush_b_only",  "email": "rushb@test.com",     "role": "observer"},
-    {"username": "pro_lurker",   "email": "lurker@test.com",    "role": "observer"},
-    {"username": "awp_god",      "email": "awp@test.com",       "role": "observer"},
-    {"username": "flash_out",    "email": "flash@test.com",     "role": "observer"},
-    {"username": "smoke_master", "email": "smoke@test.com",     "role": "observer"},
-    {"username": "entry_frag",   "email": "entry@test.com",     "role": "observer"},
+    {"username": "admin", "email": "admin@esports.com", "role": "admin"},
+    {"username": "mod_marko", "email": "marko@esports.com", "role": "admin"},
 ]
 
 created_users = []
@@ -61,200 +83,225 @@ for u in USERS:
     print(f"  {u['role']:10} {u['username']:15} — {u['email']}")
 
 admins = [u for u in created_users if u["role"] == "admin"]
-observers = [u for u in created_users if u["role"] == "observer"]
+admin = admins[0]
+
+print("\nKreiranje timova...")
+
+def create_teams_for_game(game: str, count: int = 8):
+    team_size = GAME_TEAM_SIZE.get(game, 5)
+    teams = []
+    available_names = TEAM_NAMES.copy()
+    available_players = PLAYER_NAMES.copy()
+    random.shuffle(available_names)
+    random.shuffle(available_players)
+    
+    for i in range(count):
+        team_name = available_names[i % len(available_names)]
+        if i >= len(available_names):
+            team_name = f"{team_name} {i // len(available_names) + 1}"
+        
+        players = []
+        for j in range(team_size):
+            player_idx = (i * team_size + j) % len(available_players)
+            players.append({
+                "player_id": uid(),
+                "player_name": available_players[player_idx],
+                "role": ["IGL", "Entry", "Support", "AWP", "Lurk", "Flex"][j % 6]
+            })
+        
+        teams.append({
+            "team_id": uid(),
+            "team_name": team_name,
+            "players": players,
+        })
+    
+    return teams
 
 print("\nKreiranje turnira...")
 
 tournaments_table = dynamodb.Table("Tournaments")
-admin = admins[0]
-
 TOURNAMENTS = [
     # CS2 turniri
     {
-        "name": "Zagreb Open 2025",
+        "name": "Zagreb Major 2025",
         "game": "CS2",
         "format": "single_elimination",
-        "max_participants": 8,
-        "prize_pool": "1000.00",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "50000.00",
         "status": "completed",
         "start_date": now(-14),
-        "description": "Otvoreni turnir za sve igrace iz Hrvatske.",
+        "description": "Najveci CS2 turnir u regiji.",
     },
     {
-        "name": "Pro League Season 3",
-        "game": "CS2",
-        "format": "round_robin",
-        "max_participants": 8,
-        "prize_pool": "2000.00",
-        "status": "draft",
-        "start_date": now(30),
-        "description": "Profesionalna liga — sezona 3.",
-    },
-    {
-        "name": "Balkan Masters CS2",
+        "name": "Balkan Pro League",
         "game": "CS2",
         "format": "single_elimination",
-        "max_participants": 16,
-        "prize_pool": "5000.00",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "25000.00",
+        "status": "in_progress",
+        "start_date": now(-3),
+        "description": "Profesionalna CS2 liga.",
+    },
+    {
+        "name": "CS2 Masters Cup",
+        "game": "CS2",
+        "format": "single_elimination",
+        "match_format": "bo5",
+        "max_teams": 16,
+        "prize_pool": "100000.00",
         "status": "registration",
         "start_date": now(14),
-        "description": "Najveci CS2 turnir na Balkanu.",
+        "description": "Elite CS2 turnir.",
     },
     # Valorant turniri
     {
-        "name": "Summer Frag Fest",
+        "name": "Valorant Champions HR",
         "game": "Valorant",
         "format": "single_elimination",
-        "max_participants": 8,
-        "prize_pool": "250.00",
-        "status": "registration",
-        "start_date": now(7),
-        "description": "Ljetni turnir u Valorantu.",
-    },
-    {
-        "name": "Valorant Rookie Cup",
-        "game": "Valorant",
-        "format": "double_elimination",
-        "max_participants": 16,
-        "prize_pool": "500.00",
-        "status": "in_progress",
-        "start_date": now(-5),
-        "description": "Turnir za nove igrace.",
-    },
-    {
-        "name": "Split Showdown",
-        "game": "Valorant",
-        "format": "single_elimination",
-        "max_participants": 8,
-        "prize_pool": "750.00",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "30000.00",
         "status": "completed",
         "start_date": now(-21),
+        "description": "Hrvatski Valorant šampionat.",
+    },
+    {
+        "name": "Split Invitational",
+        "game": "Valorant",
+        "format": "single_elimination",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "15000.00",
+        "status": "in_progress",
+        "start_date": now(-5),
         "description": "Valorant turnir u Splitu.",
+    },
+    {
+        "name": "Valorant Rising Stars",
+        "game": "Valorant",
+        "format": "double_elimination",
+        "match_format": "bo3",
+        "max_teams": 16,
+        "prize_pool": "10000.00",
+        "status": "registration",
+        "start_date": now(7),
+        "description": "Turnir za nove timove.",
+    },
+    # League of Legends turniri
+    {
+        "name": "LoL Adriatic League",
+        "game": "League of Legends",
+        "format": "single_elimination",
+        "match_format": "bo5",
+        "max_teams": 8,
+        "prize_pool": "40000.00",
+        "status": "completed",
+        "start_date": now(-28),
+        "description": "Regionalna LoL liga.",
+    },
+    {
+        "name": "Summoner's Cup",
+        "game": "League of Legends",
+        "format": "single_elimination",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "20000.00",
+        "status": "in_progress",
+        "start_date": now(-7),
+        "description": "LoL turnir.",
+    },
+    # Dota 2 turniri
+    {
+        "name": "Dota 2 Balkan Championship",
+        "game": "Dota 2",
+        "format": "single_elimination",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "35000.00",
+        "status": "completed",
+        "start_date": now(-35),
+        "description": "Balkanski Dota 2 turnir.",
+    },
+    {
+        "name": "Ancient Wars Cup",
+        "game": "Dota 2",
+        "format": "single_elimination",
+        "match_format": "bo5",
+        "max_teams": 8,
+        "prize_pool": "25000.00",
+        "status": "in_progress",
+        "start_date": now(-4),
+        "description": "Kompetitivni Dota turnir.",
+    },
+    # Rocket League turniri
+    {
+        "name": "Rocket League HR Open",
+        "game": "Rocket League",
+        "format": "single_elimination",
+        "match_format": "bo5",
+        "max_teams": 8,
+        "prize_pool": "8000.00",
+        "status": "completed",
+        "start_date": now(-18),
+        "description": "Hrvatski RL turnir.",
+    },
+    {
+        "name": "Aerial Masters",
+        "game": "Rocket League",
+        "format": "single_elimination",
+        "match_format": "bo5",
+        "max_teams": 8,
+        "prize_pool": "12000.00",
+        "status": "in_progress",
+        "start_date": now(-2),
+        "description": "RL masters turnir.",
     },
     # Marvel Rivals turniri
     {
-        "name": "Adriatic Cup",
+        "name": "Marvel Rivals Showdown",
         "game": "Marvel Rivals",
         "format": "single_elimination",
-        "max_participants": 8,
-        "prize_pool": "500.00",
-        "status": "in_progress",
-        "start_date": now(-3),
-        "description": "Regionalni turnir Jadranskog podrucja.",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "15000.00",
+        "status": "completed",
+        "start_date": now(-10),
+        "description": "Prvi Marvel Rivals turnir.",
     },
     {
         "name": "Heroes Clash Zagreb",
         "game": "Marvel Rivals",
         "format": "single_elimination",
-        "max_participants": 16,
-        "prize_pool": "1500.00",
-        "status": "registration",
-        "start_date": now(10),
-        "description": "Marvel Rivals turnir u Zagrebu.",
-    },
-    # League of Legends turniri
-    {
-        "name": "LoL Balkan League",
-        "game": "League of Legends",
-        "format": "round_robin",
-        "max_participants": 8,
-        "prize_pool": "3000.00",
-        "status": "in_progress",
-        "start_date": now(-10),
-        "description": "Regionalna liga za League of Legends.",
-    },
-    {
-        "name": "Summoner's Cup HR",
-        "game": "League of Legends",
-        "format": "double_elimination",
-        "max_participants": 16,
-        "prize_pool": "2000.00",
-        "status": "registration",
-        "start_date": now(21),
-        "description": "Hrvatski LoL turnir.",
-    },
-    # Dota 2 turniri
-    {
-        "name": "Dota Legends Open",
-        "game": "Dota 2",
-        "format": "single_elimination",
-        "max_participants": 8,
-        "prize_pool": "1500.00",
-        "status": "completed",
-        "start_date": now(-28),
-        "description": "Otvoreni Dota 2 turnir.",
-    },
-    {
-        "name": "Ancient Wars",
-        "game": "Dota 2",
-        "format": "double_elimination",
-        "max_participants": 16,
-        "prize_pool": "2500.00",
-        "status": "registration",
-        "start_date": now(18),
-        "description": "Kompetitivni Dota 2 turnir.",
-    },
-    # Fortnite turniri
-    {
-        "name": "Fortnite Friday",
-        "game": "Fortnite",
-        "format": "single_elimination",
-        "max_participants": 32,
-        "prize_pool": "500.00",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "20000.00",
         "status": "in_progress",
         "start_date": now(-1),
-        "description": "Tjedni Fortnite turnir.",
-    },
-    {
-        "name": "Victory Royale Cup",
-        "game": "Fortnite",
-        "format": "single_elimination",
-        "max_participants": 64,
-        "prize_pool": "1000.00",
-        "status": "registration",
-        "start_date": now(5),
-        "description": "Veliki Fortnite turnir.",
-    },
-    # Rocket League turniri
-    {
-        "name": "Rocket Masters",
-        "game": "Rocket League",
-        "format": "double_elimination",
-        "max_participants": 8,
-        "prize_pool": "800.00",
-        "status": "completed",
-        "start_date": now(-35),
-        "description": "Rocket League masters turnir.",
-    },
-    {
-        "name": "Aerial Kings",
-        "game": "Rocket League",
-        "format": "single_elimination",
-        "max_participants": 16,
-        "prize_pool": "1200.00",
-        "status": "registration",
-        "start_date": now(12),
-        "description": "Turnir za najbolje Rocket League igrace.",
+        "description": "Marvel Rivals u Zagrebu.",
     },
     # Overwatch 2 turniri
     {
-        "name": "Overwatch Spring Cup",
+        "name": "Overwatch Balkan Cup",
         "game": "Overwatch 2",
         "format": "single_elimination",
-        "max_participants": 8,
-        "prize_pool": "600.00",
-        "status": "in_progress",
-        "start_date": now(-2),
-        "description": "Proljetni OW2 turnir.",
+        "match_format": "bo5",
+        "max_teams": 8,
+        "prize_pool": "18000.00",
+        "status": "completed",
+        "start_date": now(-25),
+        "description": "OW2 regionalni turnir.",
     },
     {
         "name": "Heroes United",
         "game": "Overwatch 2",
-        "format": "round_robin",
-        "max_participants": 8,
-        "prize_pool": "1000.00",
-        "status": "registration",
-        "start_date": now(25),
+        "format": "single_elimination",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "12000.00",
+        "status": "in_progress",
+        "start_date": now(-3),
         "description": "OW2 liga.",
     },
     # Apex Legends turniri
@@ -262,57 +309,43 @@ TOURNAMENTS = [
         "name": "Apex Predators HR",
         "game": "Apex Legends",
         "format": "single_elimination",
-        "max_participants": 20,
-        "prize_pool": "1500.00",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "10000.00",
         "status": "completed",
-        "start_date": now(-18),
+        "start_date": now(-15),
         "description": "Hrvatski Apex turnir.",
-    },
-    {
-        "name": "Battle Royale Championship",
-        "game": "Apex Legends",
-        "format": "single_elimination",
-        "max_participants": 30,
-        "prize_pool": "2000.00",
-        "status": "registration",
-        "start_date": now(8),
-        "description": "Veliki Apex Legends turnir.",
     },
     # Rainbow Six Siege turniri
     {
         "name": "Siege Masters",
         "game": "Rainbow Six Siege",
-        "format": "double_elimination",
-        "max_participants": 8,
-        "prize_pool": "1000.00",
-        "status": "in_progress",
-        "start_date": now(-4),
-        "description": "R6 Siege masters turnir.",
-    },
-    {
-        "name": "Tactical Ops Cup",
-        "game": "Rainbow Six Siege",
         "format": "single_elimination",
-        "max_participants": 16,
-        "prize_pool": "1500.00",
-        "status": "draft",
-        "start_date": now(35),
-        "description": "Takticka R6 liga.",
+        "match_format": "bo3",
+        "max_teams": 8,
+        "prize_pool": "15000.00",
+        "status": "in_progress",
+        "start_date": now(-6),
+        "description": "R6 Siege masters.",
     },
 ]
 
 created_tournaments = []
 for t in TOURNAMENTS:
     t_id = uid()
-    participants = [{"user_id": u["user_id"], "username": u["username"]} for u in observers]
+    game = t["game"]
+    teams = create_teams_for_game(game, t["max_teams"])
+    
     item = {
         "tournament_id": t_id,
         "name": t["name"],
-        "game": t["game"],
+        "game": game,
+        "team_size": GAME_TEAM_SIZE.get(game, 5),
         "format": t["format"],
-        "max_participants": t["max_participants"],
-        "current_participants": len(participants),
-        "participants": participants,
+        "match_format": t["match_format"],
+        "max_teams": t["max_teams"],
+        "current_teams": len(teams),
+        "teams": teams,
         "prize_pool": t["prize_pool"],
         "status": t["status"],
         "admin_id": admin["user_id"],
@@ -324,13 +357,25 @@ for t in TOURNAMENTS:
     }
     tournaments_table.put_item(Item=item)
     created_tournaments.append(item)
-    print(f"[{t['status']:14}] {t['name']} ({t['game']})")
+    print(f"[{t['status']:14}] {t['name']} ({game}, {t['match_format']})")
 
 print("\nKreiranje meceva...")
 
 matches_table = dynamodb.Table("Matches")
 
-def make_stats(won=False):
+MAP_NAMES = {
+    "CS2": ["Mirage", "Inferno", "Nuke", "Ancient", "Anubis", "Vertigo", "Dust2"],
+    "Valorant": ["Bind", "Haven", "Split", "Ascent", "Icebox", "Breeze", "Fracture", "Pearl", "Lotus"],
+    "League of Legends": ["Summoner's Rift"],
+    "Dota 2": ["Default"],
+    "Rocket League": ["DFH Stadium", "Mannfield", "Champions Field", "Urban Central", "Beckwith Park"],
+    "Marvel Rivals": ["Tokyo", "New York", "Wakanda"],
+    "Overwatch 2": ["King's Row", "Hollywood", "Eichenwalde", "Numbani", "Dorado", "Route 66"],
+    "Apex Legends": ["World's Edge", "Storm Point", "Olympus", "Kings Canyon"],
+    "Rainbow Six Siege": ["Bank", "Border", "Chalet", "Clubhouse", "Coastline", "Consulate"],
+}
+
+def make_player_stats(won=False):
     if won:
         return {
             "kills": random.randint(18, 30),
@@ -346,71 +391,155 @@ def make_stats(won=False):
             "score": random.randint(800, 2400),
         }
 
+def make_team_stats(players, won=False):
+    player_stats = []
+    total_kills = 0
+    total_deaths = 0
+    total_score = 0
+    
+    for p in players:
+        stats = make_player_stats(won)
+        player_stats.append({
+            "player_id": p["player_id"],
+            "player_name": p["player_name"],
+            **stats
+        })
+        total_kills += stats["kills"]
+        total_deaths += stats["deaths"]
+        total_score += stats["score"]
+    
+    return {
+        "players": player_stats,
+        "total_kills": total_kills,
+        "total_deaths": total_deaths,
+        "total_score": total_score,
+    }
+
+def generate_bo_result(match_format: str, winner_team_id: str, team1_id: str, team2_id: str, game: str):
+    """Generate BO result based on format."""
+    if match_format == "bo1":
+        wins_needed = 1
+    elif match_format == "bo3":
+        wins_needed = 2
+    else:  # bo5
+        wins_needed = 3
+    
+    maps = MAP_NAMES.get(game, ["Map 1", "Map 2", "Map 3"])
+    random.shuffle(maps)
+    
+    t1_wins = 0
+    t2_wins = 0
+    map_results = []
+    map_num = 0
+    
+    while t1_wins < wins_needed and t2_wins < wins_needed:
+        map_num += 1
+        
+        if winner_team_id == team1_id:
+            map_winner = team1_id if random.random() < 0.65 else team2_id
+        else:
+            map_winner = team2_id if random.random() < 0.65 else team1_id
+        
+        if map_winner == team1_id:
+            t1_wins += 1
+            t1_score = random.randint(13, 16)
+            t2_score = random.randint(5, 12)
+        else:
+            t2_wins += 1
+            t2_score = random.randint(13, 16)
+            t1_score = random.randint(5, 12)
+        
+        map_results.append({
+            "map_number": map_num,
+            "map_name": maps[(map_num - 1) % len(maps)],
+            "winner_team_id": map_winner,
+            "team1_score": t1_score,
+            "team2_score": t2_score,
+        })
+    
+    return t1_wins, t2_wins, map_results
+
 created_matches = []
 
 def generate_bracket_for_tournament(t, is_completed=False):
-    """Generate bracket and matches for a tournament."""
     t_id = t["tournament_id"]
-    players = observers.copy()
-    random.shuffle(players)
-    
-    # Use only 8 players for simplicity
-    players = players[:8]
+    teams = t["teams"][:8] 
+    random.shuffle(teams)
+    game = t["game"]
+    match_format = t["match_format"]
     
     all_matches = []
-    round_players = players
+    round_teams = teams
     round_num = 1
     
-    while len(round_players) > 1:
+    while len(round_teams) > 1:
         next_round = []
-        for pos, (p1, p2) in enumerate(zip(round_players[::2], round_players[1::2]), start=1):
+        for pos, (t1, t2) in enumerate(zip(round_teams[::2], round_teams[1::2]), start=1):
             m_id = uid()
             
-            if is_completed or round_num < 3:  # Complete earlier rounds
-                winner = random.choice([p1, p2])
+            if is_completed or round_num < 3:  
+                winner = random.choice([t1, t2])
+                loser = t2 if winner == t1 else t1
+                
+                t1_wins, t2_wins, map_results = generate_bo_result(
+                    match_format, winner["team_id"], t1["team_id"], t2["team_id"], game
+                )
+                
                 match = {
                     "match_id": m_id,
                     "tournament_id": t_id,
                     "round": round_num,
                     "position": pos,
-                    "player1_id": p1["user_id"],
-                    "player1_name": p1["username"],
-                    "player2_id": p2["user_id"],
-                    "player2_name": p2["username"],
-                    "winner_id": winner["user_id"],
+                    "match_format": match_format,
+                    "team1_id": t1["team_id"],
+                    "team1_name": t1["team_name"],
+                    "team1_players": t1["players"],
+                    "team2_id": t2["team_id"],
+                    "team2_name": t2["team_name"],
+                    "team2_players": t2["players"],
+                    "winner_id": winner["team_id"],
+                    "team1_maps_won": t1_wins,
+                    "team2_maps_won": t2_wins,
+                    "map_results": map_results,
+                    "team1_stats": make_team_stats(t1["players"], winner == t1),
+                    "team2_stats": make_team_stats(t2["players"], winner == t2),
                     "status": "completed",
-                    "player1_stats": make_stats(p1 == winner),
-                    "player2_stats": make_stats(p2 == winner),
-                    "duration_seconds": random.randint(1200, 3600),
+                    "duration_seconds": random.randint(2400, 7200),
                     "scheduled_at": now(-10 + round_num),
                     "completed_at": now(-9 + round_num),
                 }
                 next_round.append(winner)
-            else:  # Leave later rounds pending for in_progress
+            else:  
                 match = {
                     "match_id": m_id,
                     "tournament_id": t_id,
                     "round": round_num,
                     "position": pos,
-                    "player1_id": p1["user_id"] if p1 else None,
-                    "player1_name": p1["username"] if p1 else None,
-                    "player2_id": p2["user_id"] if p2 else None,
-                    "player2_name": p2["username"] if p2 else None,
+                    "match_format": match_format,
+                    "team1_id": t1["team_id"] if t1 else None,
+                    "team1_name": t1["team_name"] if t1 else None,
+                    "team1_players": t1["players"] if t1 else None,
+                    "team2_id": t2["team_id"] if t2 else None,
+                    "team2_name": t2["team_name"] if t2 else None,
+                    "team2_players": t2["players"] if t2 else None,
                     "winner_id": None,
+                    "team1_maps_won": 0,
+                    "team2_maps_won": 0,
+                    "map_results": None,
+                    "team1_stats": None,
+                    "team2_stats": None,
                     "status": "pending",
-                    "player1_stats": None,
-                    "player2_stats": None,
                     "duration_seconds": None,
                     "scheduled_at": now(round_num),
                     "completed_at": None,
                 }
-                next_round.append(p1)  # placeholder
+                next_round.append(t1)  
             
             matches_table.put_item(Item=match)
             created_matches.append(match)
             all_matches.append(match)
         
-        round_players = next_round
+        round_teams = next_round
         round_num += 1
     
     # Update tournament with bracket
@@ -422,7 +551,6 @@ def generate_bracket_for_tournament(t, is_completed=False):
     
     return all_matches
 
-# Generate brackets for completed and in_progress tournaments
 for t in created_tournaments:
     if t["status"] == "completed":
         matches = generate_bracket_for_tournament(t, is_completed=True)
@@ -431,78 +559,11 @@ for t in created_tournaments:
         matches = generate_bracket_for_tournament(t, is_completed=False)
         print(f"  ⏳ {t['name']}: {len(matches)} meceva (in_progress)")
 
-print("\nRacunanje statistika...")
-
-player_stats_table = dynamodb.Table("PlayerStats")
-leaderboard_table = dynamodb.Table("Leaderboard")
-
-stats_agg = {}
-
-for match in created_matches:
-    if match["status"] != "completed":
-        continue
-
-    for pid, pname, pstats, is_winner in [
-        (match["player1_id"], match["player1_name"], match.get("player1_stats"), match["winner_id"] == match["player1_id"]),
-        (match["player2_id"], match["player2_name"], match.get("player2_stats"), match["winner_id"] == match["player2_id"]),
-    ]:
-        if not pid or not pstats:
-            continue
-
-        if pid not in stats_agg:
-            stats_agg[pid] = {
-                "player_id": pid,
-                "username": pname,
-                "matches_played": 0,
-                "wins": 0,
-                "losses": 0,
-                "total_kills": 0,
-                "total_deaths": 0,
-                "total_assists": 0,
-                "rating": 1000.0,
-            }
-
-        s = stats_agg[pid]
-        s["matches_played"] += 1
-        s["wins"] += 1 if is_winner else 0
-        s["losses"] += 0 if is_winner else 1
-        s["total_kills"] += pstats.get("kills", 0)
-        s["total_deaths"] += pstats.get("deaths", 0)
-        s["total_assists"] += pstats.get("assists", 0)
-        s["rating"] += 25 if is_winner else -15
-        s["rating"] = max(0.0, s["rating"])
-
-for pid, s in stats_agg.items():
-    mp = s["matches_played"]
-    s["win_rate"] = round(s["wins"] / mp, 4) if mp else 0.0
-    deaths = s["total_deaths"]
-    s["kd_ratio"] = round(s["total_kills"] / deaths, 4) if deaths else float(s["total_kills"])
-
-    player_stats_table.put_item(Item={
-        k: Decimal(str(v)) if isinstance(v, float) else v
-        for k, v in s.items()
-    })
-
-    leaderboard_table.put_item(Item={
-        "scope": "GLOBAL",
-        "player_id": pid,
-        "username": s["username"],
-        "rating": Decimal(str(s["rating"])),
-        "wins": s["wins"],
-        "matches_played": mp,
-        "win_rate": Decimal(str(s["win_rate"])),
-    })
-
-    print(f"{s['username']:15} rating={s['rating']:.0f}  W/L={s['wins']}/{s['losses']}  K/D={s['kd_ratio']:.2f}")
-
-print("\n" + "="*50)
-print("Seed zavrsen!")
+print("\n" + "=" * 60)
+print("Seed završen!")
 print(f"Korisnici:  {len(created_users)}")
 print(f"Turniri:    {len(created_tournaments)}")
-print(f"Mecevi:     {len(created_matches)}")
-print(f"Statistike: {len(stats_agg)} igraca")
-print("="*50)
+print(f"Mečevi:     {len(created_matches)}")
+print("=" * 60)
 print("\nLogin podaci (lozinka: lozinka123)")
 print("  admin@esports.com  — role: admin")
-print("  sniper@test.com    — role: observer")
-print("  headshot@test.com  — role: observer")

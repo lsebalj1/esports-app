@@ -10,18 +10,25 @@ from app.core.auth import require_admin
 from app.core.config import settings
 from app.core.database import get_table
 from app.core.events import publish_event
-from app.schemas.tournament import (BracketMatch, BracketResponse, CreateTournamentRequest, TournamentResponse, UpdateTournamentRequest)
+from app.schemas.tournament import (
+    BracketMatch, BracketResponse, CreateTournamentRequest, 
+    TournamentResponse, UpdateTournamentRequest, GAME_TEAM_SIZE
+)
 
 router = APIRouter(prefix="/tournaments", tags=["tournaments"])
 
 def _tournament_to_response(item: dict) -> TournamentResponse:
+    game = item["game"]
+    team_size = GAME_TEAM_SIZE.get(game, 5)
     return TournamentResponse(
         tournament_id=item["tournament_id"],
         name=item["name"],
-        game=item["game"],
+        game=game,
+        team_size=team_size,
         format=item["format"],
-        max_participants=int(item["max_participants"]),
-        current_participants=int(item.get("current_participants", 0)),
+        match_format=item.get("match_format", "bo3"),
+        max_teams=int(item.get("max_teams", item.get("max_participants", 8))),
+        current_teams=int(item.get("current_teams", item.get("current_participants", 0))),
         prize_pool=float(item["prize_pool"]) if item.get("prize_pool") else None,
         start_date=item["start_date"],
         status=item["status"],
@@ -31,7 +38,7 @@ def _tournament_to_response(item: dict) -> TournamentResponse:
         created_at=item["created_at"],
     )
 
-async def _create_match_in_service(tournament_id: str, round_num: int, position: int) -> str:
+async def _create_match_in_service(tournament_id: str, round_num: int, position: int, match_format: str = "bo3") -> str:
     match_id = str(uuid.uuid4())
     try:
         async with httpx.AsyncClient() as client:
@@ -42,25 +49,31 @@ async def _create_match_in_service(tournament_id: str, round_num: int, position:
                     "tournament_id": tournament_id,
                     "round": round_num,
                     "position": position,
+                    "match_format": match_format,
                 },
                 timeout=5.0,
             )
     except Exception:
-        pass  
+        pass
     return match_id
 
 @router.post("", response_model=TournamentResponse, status_code=201)
 async def create_tournament(payload: CreateTournamentRequest, user: dict = Depends(require_admin)):
     tournament_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
+    game = payload.game.value
+    team_size = GAME_TEAM_SIZE.get(game, 5)
+    
     item = {
         "tournament_id": tournament_id,
         "name": payload.name,
-        "game": payload.game.value,
+        "game": game,
+        "team_size": team_size,
         "format": payload.format.value,
-        "max_participants": payload.max_participants,
-        "current_participants": 0,
-        "participants": [],
+        "match_format": payload.match_format.value,
+        "max_teams": payload.max_teams,
+        "current_teams": 0,
+        "teams": [],
         "prize_pool": str(payload.prize_pool) if payload.prize_pool else None,
         "start_date": payload.start_date,
         "status": "registration",
@@ -78,7 +91,8 @@ async def create_tournament(payload: CreateTournamentRequest, user: dict = Depen
         {
             "tournament_id": tournament_id,
             "name": payload.name,
-            "game": payload.game.value,
+            "game": game,
+            "team_size": team_size,
             "admin_id": user["user_id"],
         },
     )
@@ -122,6 +136,11 @@ def update_tournament(tournament_id: str, payload: UpdateTournamentRequest, user
 
     updates = payload.model_dump(exclude_none=True)
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    if "game" in updates:
+        updates["game"] = updates["game"].value
+    if "match_format" in updates:
+        updates["match_format"] = updates["match_format"].value
 
     expr_parts, names, values = [], {}, {}
     for i, (k, v) in enumerate(updates.items()):
@@ -139,7 +158,7 @@ def update_tournament(tournament_id: str, payload: UpdateTournamentRequest, user
     return _tournament_to_response(updated)
 
 @router.post("/{tournament_id}/bracket/generate", response_model=BracketResponse)
-async def generate_bracket(tournament_id: str,user: dict = Depends(require_admin)):
+async def generate_bracket(tournament_id: str, user: dict = Depends(require_admin)):
     table = get_table("Tournaments")
     item = table.get_item(Key={"tournament_id": tournament_id}).get("Item")
     if not item:
@@ -149,48 +168,52 @@ async def generate_bracket(tournament_id: str,user: dict = Depends(require_admin
     if item["status"] not in ("registration", "draft"):
         raise HTTPException(status_code=400, detail="Cannot generate bracket now")
 
-    participants: list = item.get("participants", [])
-    if len(participants) < 2:
-        raise HTTPException(status_code=400, detail="Need at least 2 participants")
+    teams: list = item.get("teams", [])
+    if len(teams) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 teams")
 
-    random.shuffle(participants)
+    random.shuffle(teams)
+    match_format = item.get("match_format", "bo3")
 
-    n = 2 ** math.ceil(math.log2(len(participants)))
-    padded = participants + [None] * (n - len(participants))
+    n = 2 ** math.ceil(math.log2(len(teams)))
+    padded = teams + [None] * (n - len(teams))
 
     rounds = int(math.log2(n))
     all_matches: list[dict] = []
 
-    round_players = padded
+    round_teams = padded
     for round_num in range(1, rounds + 1):
         next_round = []
-        for pos, (p1, p2) in enumerate(zip(round_players[::2], round_players[1::2]), start=1):
-            match_id = await _create_match_in_service(tournament_id, round_num, pos)
+        for pos, (t1, t2) in enumerate(zip(round_teams[::2], round_teams[1::2]), start=1):
+            match_id = await _create_match_in_service(tournament_id, round_num, pos, match_format)
             match = {
                 "match_id": match_id,
                 "tournament_id": tournament_id,
                 "round": round_num,
                 "position": pos,
-                "player1_id": p1["user_id"] if p1 else None,
-                "player1_name": p1["username"] if p1 else "BYE",
-                "player2_id": p2["user_id"] if p2 else None,
-                "player2_name": p2["username"] if p2 else "BYE",
+                "match_format": match_format,
+                "team1_id": t1["team_id"] if t1 else None,
+                "team1_name": t1["team_name"] if t1 else "BYE",
+                "team2_id": t2["team_id"] if t2 else None,
+                "team2_name": t2["team_name"] if t2 else "BYE",
                 "winner_id": None,
+                "team1_maps_won": 0,
+                "team2_maps_won": 0,
                 "status": "pending",
             }
-            
-            if p1 and not p2:
-                match["winner_id"] = p1["user_id"]
+
+            if t1 and not t2:
+                match["winner_id"] = t1["team_id"]
                 match["status"] = "completed"
-                next_round.append(p1)
-            elif p2 and not p1:
-                match["winner_id"] = p2["user_id"]
+                next_round.append(t1)
+            elif t2 and not t1:
+                match["winner_id"] = t2["team_id"]
                 match["status"] = "completed"
-                next_round.append(p2)
+                next_round.append(t2)
             else:
-                next_round.append(None)  
+                next_round.append(None)
             all_matches.append(match)
-        round_players = next_round
+        round_teams = next_round
 
     table.update_item(
         Key={"tournament_id": tournament_id},
@@ -208,6 +231,7 @@ async def generate_bracket(tournament_id: str,user: dict = Depends(require_admin
     return BracketResponse(
         tournament_id=tournament_id,
         rounds=rounds,
+        match_format=match_format,
         matches=[BracketMatch(**m) for m in all_matches],
     )
 
@@ -223,8 +247,10 @@ def get_bracket(tournament_id: str):
     if not bracket:
         raise HTTPException(status_code=404, detail="Bracket not generated yet")
     rounds = max(m["round"] for m in bracket) if bracket else 0
+    match_format = item.get("match_format", "bo3")
     return BracketResponse(
         tournament_id=tournament_id,
         rounds=rounds,
+        match_format=match_format,
         matches=[BracketMatch(**m) for m in bracket],
     )
