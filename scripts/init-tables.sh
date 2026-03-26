@@ -9,7 +9,7 @@ until aws dynamodb list-tables --endpoint-url $ENDPOINT > /dev/null 2>&1; do
 done
 echo "DynamoDB ready. Creating tables..."
 
-# Users 
+# Users
 aws dynamodb create-table \
   --endpoint-url $ENDPOINT \
   --table-name Users \
@@ -22,7 +22,7 @@ aws dynamodb create-table \
     "IndexName": "email-index",
     "KeySchema": [{"AttributeName":"email","KeyType":"HASH"}],
     "Projection": {"ProjectionType":"ALL"}
-  }]' 2>/dev/null || echo "Users already exists"v
+  }]' 2>/dev/null || echo "Users already exists"
 
 # Tournaments
 aws dynamodb create-table \
@@ -73,7 +73,7 @@ aws dynamodb create-table \
   --key-schema AttributeName=player_id,KeyType=HASH \
   --billing-mode PAY_PER_REQUEST \
   2>/dev/null || echo "PlayerStats already exists"
- 
+
 # Leaderboard
 aws dynamodb create-table \
   --endpoint-url $ENDPOINT \

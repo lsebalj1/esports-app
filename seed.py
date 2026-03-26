@@ -1,6 +1,7 @@
 import boto3
 import uuid
 import random
+import time
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 import bcrypt
@@ -16,6 +17,34 @@ dynamodb = boto3.resource(
     aws_access_key_id="local",
     aws_secret_access_key="local",
 )
+
+def wait_for_table(table_name: str, retries: int = 30, delay: float = 2.0):
+    client = boto3.client(
+        "dynamodb",
+        endpoint_url=ENDPOINT,
+        region_name=REGION,
+        aws_access_key_id="local",
+        aws_secret_access_key="local",
+    )
+    for attempt in range(retries):
+        try:
+            tables = client.list_tables()["TableNames"]
+            if table_name in tables:
+                return
+        except Exception:
+            pass
+        print(f"  Waiting for table '{table_name}'... ({attempt + 1}/{retries})")
+        time.sleep(delay)
+    raise RuntimeError(f"Table '{table_name}' not available after {retries * delay}s")
+
+
+REQUIRED_TABLES = ["Users", "Tournaments", "Matches", "PlayerStats", "Leaderboard"]
+
+print("Čekanje na DynamoDB tablice...")
+for t in REQUIRED_TABLES:
+    wait_for_table(t)
+print("Sve tablice dostupne. Počinjem seed...\n")
+
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -65,8 +94,21 @@ USERS = [
     {"username": "mod_marko", "email": "marko@esports.com", "role": "admin"},
 ]
 
+def _get_user_by_email(email):
+    resp = users_table.query(
+        IndexName="email-index",
+        KeyConditionExpression=boto3.dynamodb.conditions.Key("email").eq(email),
+    )
+    items = resp.get("Items", [])
+    return items[0] if items else None
+
 created_users = []
 for u in USERS:
+    existing = _get_user_by_email(u["email"])
+    if existing:
+        print(f"{u['role']:10} {u['username']:15} — već postoji, preskačem")
+        created_users.append(existing)
+        continue
     user_id = uid()
     item = {
         "user_id": user_id,
@@ -94,12 +136,12 @@ def create_teams_for_game(game: str, count: int = 8):
     available_players = PLAYER_NAMES.copy()
     random.shuffle(available_names)
     random.shuffle(available_players)
-    
+
     for i in range(count):
         team_name = available_names[i % len(available_names)]
         if i >= len(available_names):
             team_name = f"{team_name} {i // len(available_names) + 1}"
-        
+
         players = []
         for j in range(team_size):
             player_idx = (i * team_size + j) % len(available_players)
@@ -108,13 +150,13 @@ def create_teams_for_game(game: str, count: int = 8):
                 "player_name": available_players[player_idx],
                 "role": ["IGL", "Entry", "Support", "AWP", "Lurk", "Flex"][j % 6]
             })
-        
+
         teams.append({
             "team_id": uid(),
             "team_name": team_name,
             "players": players,
         })
-    
+
     return teams
 
 print("\nKreiranje turnira...")
@@ -330,12 +372,92 @@ TOURNAMENTS = [
     },
 ]
 
+def _scan_tournaments_by_name():
+    existing = {}
+    last_key = None
+    while True:
+        kwargs = {"ExclusiveStartKey": last_key} if last_key else {}
+        resp = tournaments_table.scan(ProjectionExpression="tournament_id, #n, #s",
+                              ExpressionAttributeNames={"#n": "name", "#s": "status"},
+                              ConsistentRead=True,
+                              **kwargs)
+        for item in resp.get("Items", []):
+            existing[item["name"]] = item
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+    return existing
+
+existing_tournaments = _scan_tournaments_by_name()
+
+def cleanup_duplicate_tournaments():
+    all_items = []
+    last_key = None
+    while True:
+        kwargs = {"ConsistentRead": True}
+        if last_key:
+            kwargs["ExclusiveStartKey"] = last_key
+        resp = tournaments_table.scan(**kwargs)
+        all_items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+
+    by_name = {}
+    for item in all_items:
+        name = item["name"]
+        if name not in by_name:
+            by_name[name] = []
+        by_name[name].append(item)
+
+    deleted = 0
+    for name, items in by_name.items():
+        if len(items) <= 1:
+            continue
+        
+        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        keep = items[0]
+        for dup in items[1:]:
+            print(f"  Brisem duplikat: {name} (id={dup['tournament_id']})")
+            tournaments_table.delete_item(Key={"tournament_id": dup["tournament_id"]})
+            
+            dup_matches = matches_table.query(
+                IndexName="tournament-index",
+                KeyConditionExpression=boto3.dynamodb.conditions.Key("tournament_id").eq(dup["tournament_id"]),
+            ).get("Items", [])
+            for m in dup_matches:
+                matches_table.delete_item(Key={"match_id": m["match_id"]})
+            deleted += 1
+    return deleted
+
+removed = cleanup_duplicate_tournaments()
+if removed:
+    print(f"Obrisano {removed} duplikata turnira.")
+    existing_tournaments = _scan_tournaments_by_name()  
+else:
+    print("Nema duplikata turnira.")
+
 created_tournaments = []
 for t in TOURNAMENTS:
-    t_id = uid()
-    game = t["game"]
-    teams = create_teams_for_game(game, t["max_teams"])
+    if t["name"] in existing_tournaments:
+        print(f" [{t['status']:14}] {t['name']} — već postoji, preskačem")
+        continue
     
+    recheck = tournaments_table.scan(
+        FilterExpression="begins_with(#n, :name)",
+        ExpressionAttributeNames={"#n": "name"},
+        ExpressionAttributeValues={":name": t["name"]},
+        ConsistentRead=True,
+    )
+    if recheck.get("Items"):
+        print(f" [{t['status']:14}] {t['name']} — pronađen consistent readom, preskačem")
+        existing_tournaments[t["name"]] = recheck["Items"][0]
+        continue
+
+    t_id = uid()
+    game = t.get("game", "CS2")
+    teams = create_teams_for_game(game, t["max_teams"])
+
     item = {
         "tournament_id": t_id,
         "name": t["name"],
@@ -396,7 +518,7 @@ def make_team_stats(players, won=False):
     total_kills = 0
     total_deaths = 0
     total_score = 0
-    
+
     for p in players:
         stats = make_player_stats(won)
         player_stats.append({
@@ -407,7 +529,7 @@ def make_team_stats(players, won=False):
         total_kills += stats["kills"]
         total_deaths += stats["deaths"]
         total_score += stats["score"]
-    
+
     return {
         "players": player_stats,
         "total_kills": total_kills,
@@ -416,30 +538,29 @@ def make_team_stats(players, won=False):
     }
 
 def generate_bo_result(match_format: str, winner_team_id: str, team1_id: str, team2_id: str, game: str):
-    """Generate BO result based on format."""
     if match_format == "bo1":
         wins_needed = 1
     elif match_format == "bo3":
         wins_needed = 2
     else:  # bo5
         wins_needed = 3
-    
+
     maps = MAP_NAMES.get(game, ["Map 1", "Map 2", "Map 3"])
     random.shuffle(maps)
-    
+
     t1_wins = 0
     t2_wins = 0
     map_results = []
     map_num = 0
-    
+
     while t1_wins < wins_needed and t2_wins < wins_needed:
         map_num += 1
-        
+
         if winner_team_id == team1_id:
             map_winner = team1_id if random.random() < 0.65 else team2_id
         else:
             map_winner = team2_id if random.random() < 0.65 else team1_id
-        
+
         if map_winner == team1_id:
             t1_wins += 1
             t1_score = random.randint(13, 16)
@@ -448,7 +569,7 @@ def generate_bo_result(match_format: str, winner_team_id: str, team1_id: str, te
             t2_wins += 1
             t2_score = random.randint(13, 16)
             t1_score = random.randint(5, 12)
-        
+
         map_results.append({
             "map_number": map_num,
             "map_name": maps[(map_num - 1) % len(maps)],
@@ -456,35 +577,35 @@ def generate_bo_result(match_format: str, winner_team_id: str, team1_id: str, te
             "team1_score": t1_score,
             "team2_score": t2_score,
         })
-    
+
     return t1_wins, t2_wins, map_results
 
 created_matches = []
 
 def generate_bracket_for_tournament(t, is_completed=False):
     t_id = t["tournament_id"]
-    teams = t["teams"][:8] 
+    teams = list(t.get("teams") or [])[:8]
     random.shuffle(teams)
-    game = t["game"]
-    match_format = t["match_format"]
-    
+    game = t.get("game", "CS2")
+    match_format = t.get("match_format", "bo3")
+
     all_matches = []
     round_teams = teams
     round_num = 1
-    
+
     while len(round_teams) > 1:
         next_round = []
         for pos, (t1, t2) in enumerate(zip(round_teams[::2], round_teams[1::2]), start=1):
             m_id = uid()
-            
-            if is_completed or round_num < 3:  
+
+            if is_completed or round_num < 3:
                 winner = random.choice([t1, t2])
                 loser = t2 if winner == t1 else t1
-                
+
                 t1_wins, t2_wins, map_results = generate_bo_result(
                     match_format, winner["team_id"], t1["team_id"], t2["team_id"], game
                 )
-                
+
                 match = {
                     "match_id": m_id,
                     "tournament_id": t_id,
@@ -509,7 +630,7 @@ def generate_bracket_for_tournament(t, is_completed=False):
                     "completed_at": now(-9 + round_num),
                 }
                 next_round.append(winner)
-            else:  
+            else:
                 match = {
                     "match_id": m_id,
                     "tournament_id": t_id,
@@ -533,31 +654,113 @@ def generate_bracket_for_tournament(t, is_completed=False):
                     "scheduled_at": now(round_num),
                     "completed_at": None,
                 }
-                next_round.append(t1)  
-            
+                next_round.append(t1)
+
             matches_table.put_item(Item=match)
             created_matches.append(match)
             all_matches.append(match)
-        
+
         round_teams = next_round
         round_num += 1
-    
-    # Update tournament with bracket
+
     tournaments_table.update_item(
         Key={"tournament_id": t_id},
         UpdateExpression="SET bracket = :b",
         ExpressionAttributeValues={":b": all_matches},
     )
-    
+
     return all_matches
 
 for t in created_tournaments:
     if t["status"] == "completed":
         matches = generate_bracket_for_tournament(t, is_completed=True)
-        print(f"  ✓ {t['name']}: {len(matches)} meceva (completed)")
+        print(f" {t['name']}: {len(matches)} meceva (completed)")
     elif t["status"] == "in_progress":
         matches = generate_bracket_for_tournament(t, is_completed=False)
-        print(f"  ⏳ {t['name']}: {len(matches)} meceva (in_progress)")
+        print(f" {t['name']}: {len(matches)} meceva (in_progress)")
+
+print("\nProvjera postojećih turnira bez bracketa...")
+
+def scan_all_tournaments():
+    items, last_key = [], None
+    while True:
+        kwargs = {"ExclusiveStartKey": last_key} if last_key else {}
+        resp = tournaments_table.scan(**kwargs)
+        items += resp.get("Items", [])
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+    return items
+
+newly_created_ids = {t["tournament_id"] for t in created_tournaments}
+fixed = 0
+
+for t in scan_all_tournaments():
+    if t["tournament_id"] in newly_created_ids:
+        continue
+    if t.get("status") not in ("in_progress", "completed"):
+        continue
+
+    existing_bracket = t.get("bracket") or []
+
+    if existing_bracket:
+        first_id = existing_bracket[0].get("match_id")
+        match_exists = False
+        if first_id:
+            match_exists = bool(
+                matches_table.get_item(Key={"match_id": first_id}).get("Item")
+            )
+        if match_exists:
+            print(f"  {t['name']}: bracket postoji ({len(existing_bracket)} meceva)")
+            continue
+        print(f"  {t['name']}: bracket postoji ali matchevi nedostaju — upisujem...")
+        for m in existing_bracket:
+            if m.get("match_id"):
+                matches_table.put_item(Item=m)
+        created_matches.extend(existing_bracket)
+        print(f"  upisano {len(existing_bracket)} meceva")
+        fixed += 1
+        continue
+
+    existing_matches_resp = matches_table.query(
+        IndexName="tournament-index",
+        KeyConditionExpression=boto3.dynamodb.conditions.Key("tournament_id").eq(t["tournament_id"]),
+    )
+    existing_match_items = existing_matches_resp.get("Items", [])
+    if existing_match_items:
+        print(f"  {t['name']}: nema bracket polja ali {len(existing_match_items)} meceva postoji u Matches tablici — sinkroniziram...")
+        tournaments_table.update_item(
+            Key={"tournament_id": t["tournament_id"]},
+            UpdateExpression="SET bracket = :b",
+            ExpressionAttributeValues={":b": existing_match_items},
+        )
+        fixed += 1
+        continue
+
+    teams = list(t.get("teams") or [])
+    if len(teams) < 2:
+        game = t.get("game", "CS2")
+        max_teams = int(t.get("max_teams") or 8)
+        teams = create_teams_for_game(game, min(max_teams, 8))
+        tournaments_table.update_item(
+            Key={"tournament_id": t["tournament_id"]},
+            UpdateExpression="SET teams = :teams, current_teams = :ct",
+            ExpressionAttributeValues={":teams": teams, ":ct": len(teams)},
+        )
+        t["teams"] = teams
+        print(f"  {t['name']}: dodano {len(teams)} timova ({game})")
+
+    is_completed = t["status"] == "completed"
+    matches = generate_bracket_for_tournament(t, is_completed=is_completed)
+    if matches:
+        print(f"  {t['name']}: generiran bracket ({len(matches)} meceva)")
+        created_matches.extend(matches)
+        fixed += 1
+
+if fixed:
+    print(f"popunjen bracket za {fixed} postojeći/ih turnir(a)")
+else:
+    print("svi postojeći turniri imaju bracket")
 
 print("\n" + "=" * 60)
 print("Seed završen!")

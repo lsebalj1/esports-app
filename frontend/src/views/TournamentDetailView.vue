@@ -293,6 +293,9 @@ async function load() {
       try {
         matches.value = await matchApi.byTournament(id)
       } catch (e) {
+        // match-service nedostupan — probaj embedded bracket
+      }
+      if (!matches.value.length) {
         try {
           const bracket = await tournamentApi.getBracket(id)
           matches.value = bracket.matches || []
@@ -307,6 +310,7 @@ async function load() {
 }
 
 async function generateBracket() {
+  if (actionLoading.value) return        
   error.value = ''
   success.value = ''
   actionLoading.value = true
@@ -525,7 +529,6 @@ onMounted(load)
   border-top: 1px solid var(--border);
 }
 
-/* Modal styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -590,7 +593,6 @@ onMounted(load)
 
 .match-duration { font-size: 13px; color: var(--text-muted); }
 
-/* Score display */
 .match-score {
   display: flex;
   justify-content: center;
@@ -617,7 +619,6 @@ onMounted(load)
 .score-team.winner .score-value { color: var(--accent); }
 .score-separator { font-size: 24px; color: var(--text-muted); }
 
-/* Map results */
 .map-results { margin-bottom: 24px; }
 .map-results h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
 
@@ -637,7 +638,6 @@ onMounted(load)
 .map-score { font-weight: 700; }
 .map-winner { color: var(--accent); }
 
-/* Team stats */
 .team-stats-section h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
 .teams-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .team-stats-block h5 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
@@ -666,7 +666,6 @@ onMounted(load)
 .stats-table td:not(:first-child) { text-align: center; }
 .stats-table th:not(:first-child) { text-align: center; }
 
-/* Submit result form */
 .submit-result {
   margin-top: 24px;
   padding-top: 20px;

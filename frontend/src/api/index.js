@@ -26,9 +26,9 @@ async function request(url, options = {}) {
 }
 
 export const authApi = {
-  register: (data) => request(`${BASE.auth}/auth/register`, { method: 'POST', body: JSON.stringify(data) }),
-  login: (data) => request(`${BASE.auth}/auth/login`, { method: 'POST', body: JSON.stringify(data) }),
-  me: () => request(`${BASE.auth}/auth/me`),
+  register: (data) => request(`${BASE.auth}/register`, { method: 'POST', body: JSON.stringify(data) }),
+  login:    (data) => request(`${BASE.auth}/login`,    { method: 'POST', body: JSON.stringify(data) }),
+  me:       ()     => request(`${BASE.auth}/me`),
 }
 
 export const tournamentApi = {
@@ -36,19 +36,19 @@ export const tournamentApi = {
     const q = new URLSearchParams(params).toString()
     return request(`${BASE.tournaments}${q ? '?' + q : ''}`)
   },
-  get: (id) => request(`${BASE.tournaments}/${id}`),
-  create: (data) => request(`${BASE.tournaments}`, { method: 'POST', body: JSON.stringify(data) }),
-  getBracket: (id) => request(`${BASE.tournaments}/${id}/bracket`),
-  generateBracket: (id) => request(`${BASE.tournaments}/${id}/bracket/generate`, { method: 'POST' }),
+  get:              (id)   => request(`${BASE.tournaments}/${id}`),
+  create:           (data) => request(`${BASE.tournaments}`, { method: 'POST', body: JSON.stringify(data) }),
+  getBracket:       (id)   => request(`${BASE.tournaments}/${id}/bracket`),
+  generateBracket:  (id)   => request(`${BASE.tournaments}/${id}/bracket/generate`, { method: 'POST' }),
 }
 
 export const matchApi = {
   byTournament: (tournamentId) => request(`${BASE.matches}/tournament/${tournamentId}`),
-  get: (id) => request(`${BASE.matches}/${id}`),
-  submitResult: (id, data) => request(`${BASE.matches}/${id}/result`, { method: 'POST', body: JSON.stringify(data) }),
+  get:          (id)           => request(`${BASE.matches}/${id}`),
+  submitResult: (id, data)     => request(`${BASE.matches}/${id}/result`, { method: 'POST', body: JSON.stringify(data) }),
 }
 
 export const statsApi = {
-  leaderboard: () => request(`${BASE.stats}/leaderboard`),
-  player: (id) => request(`${BASE.stats}/player/${id}`),
+  leaderboard: ()   => request(`${BASE.stats}/leaderboard`),
+  player:      (id) => request(`${BASE.stats}/player/${id}`),
 }

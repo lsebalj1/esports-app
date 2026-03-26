@@ -120,6 +120,8 @@ services:
              python seed.py"
     depends_on:
       - dynamodb-init
+    profiles:
+      - seed
     networks:
       - esports-net
 
