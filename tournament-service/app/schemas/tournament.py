@@ -19,7 +19,7 @@ GAME_TEAM_SIZE = {
     "Valorant": 5,
     "League of Legends": 5,
     "Dota 2": 5,
-    "Fortnite": 4,  # Squad mode
+    "Fortnite": 4,  
     "Rocket League": 3,
     "Overwatch 2": 5,
     "Apex Legends": 3,
@@ -40,7 +40,7 @@ class TournamentFormat(str, Enum):
 class TeamPlayer(BaseModel):
     player_id: str
     player_name: str
-    role: Optional[str] = None  # e.g., "IGL", "Entry", "Support", "AWP"
+    role: Optional[str] = None 
 
 class Team(BaseModel):
     team_id: str
@@ -61,8 +61,10 @@ class CreateTournamentRequest(BaseModel):
 class UpdateTournamentRequest(BaseModel):
     name: Optional[str] = None
     game: Optional[GameEnum] = None
+    format: Optional[TournamentFormat] = None
     status: Optional[str] = None
     match_format: Optional[MatchFormatEnum] = None
+    max_teams: Optional[int] = None
     prize_pool: Optional[float] = None
     start_date: Optional[str] = None
     description: Optional[str] = None

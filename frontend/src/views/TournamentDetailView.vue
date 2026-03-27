@@ -40,13 +40,19 @@
       <!-- Admin -->
       <div v-if="auth.isAdmin" class="actions">
         <button
+          class="btn btn-secondary"
+          @click="openEditModal"
+        >
+          Uredi turnir
+        </button>
+        <button
           v-if="canGenerateBracket"
           class="btn btn-primary"
           :disabled="actionLoading"
           @click="generateBracket"
         >
           <span v-if="actionLoading" class="spinner"></span>
-          {{ actionLoading ? 'Generiranje...' : '⚡ Generiraj bracket' }}
+          {{ actionLoading ? 'Generiranje...' : 'Generiraj bracket' }}
         </button>
       </div>
 
@@ -101,8 +107,8 @@
     <div v-if="selectedMatch" class="modal-overlay" @click.self="closeModal">
       <div class="modal">
         <div class="modal-header">
-          <h3>Detalji meča</h3>
-          <button class="modal-close" @click="closeModal">✕</button>
+          <h3>Detalji meca</h3>
+          <button class="modal-close" @click="closeModal">&#10005;</button>
         </div>
 
         <div class="modal-body">
@@ -110,7 +116,7 @@
             <span class="badge" :class="`badge-${selectedMatch.status}`">{{ matchStatusLabel(selectedMatch.status) }}</span>
             <span class="match-format-label">{{ selectedMatch.match_format?.toUpperCase() }}</span>
             <span v-if="selectedMatch.duration_seconds" class="match-duration">
-              ⏱ {{ formatDuration(selectedMatch.duration_seconds) }}
+              {{ formatDuration(selectedMatch.duration_seconds) }}
             </span>
           </div>
 
@@ -142,13 +148,13 @@
           </div>
 
           <div v-if="selectedMatch.team1_stats || selectedMatch.team2_stats" class="team-stats-section">
-            <h4>Statistike igrača</h4>
+            <h4>Statistike igraca</h4>
             <div class="teams-stats">
               <div class="team-stats-block" v-if="selectedMatch.team1_stats">
                 <h5 :class="{ winner: selectedMatch.winner_id === selectedMatch.team1_id }">{{ selectedMatch.team1_name }}</h5>
                 <table class="stats-table">
                   <thead>
-                    <tr><th>Igrač</th><th>K</th><th>D</th><th>A</th><th>Score</th></tr>
+                    <tr><th>Igrac</th><th>K</th><th>D</th><th>A</th><th>Score</th></tr>
                   </thead>
                   <tbody>
                     <tr v-for="p in selectedMatch.team1_stats.players" :key="p.player_id">
@@ -165,7 +171,7 @@
                 <h5 :class="{ winner: selectedMatch.winner_id === selectedMatch.team2_id }">{{ selectedMatch.team2_name }}</h5>
                 <table class="stats-table">
                   <thead>
-                    <tr><th>Igrač</th><th>K</th><th>D</th><th>A</th><th>Score</th></tr>
+                    <tr><th>Igrac</th><th>K</th><th>D</th><th>A</th><th>Score</th></tr>
                   </thead>
                   <tbody>
                     <tr v-for="p in selectedMatch.team2_stats.players" :key="p.player_id">
@@ -223,6 +229,104 @@
       </div>
     </div>
 
+    <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Uredi turnir</h3>
+          <button class="modal-close" @click="closeEditModal">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="editError" class="alert alert-error">{{ editError }}</div>
+          <div v-if="editSuccess" class="alert alert-success">{{ editSuccess }}</div>
+
+          <div class="form-group">
+            <label>Naziv</label>
+            <input v-model="editForm.name" type="text" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Igra</label>
+              <select v-model="editForm.game" :disabled="isStarted">
+                <option value="CS2">CS2</option>
+                <option value="Valorant">Valorant</option>
+                <option value="League of Legends">League of Legends</option>
+                <option value="Dota 2">Dota 2</option>
+                <option value="Fortnite">Fortnite</option>
+                <option value="Rocket League">Rocket League</option>
+                <option value="Overwatch 2">Overwatch 2</option>
+                <option value="Apex Legends">Apex Legends</option>
+                <option value="Rainbow Six Siege">Rainbow Six Siege</option>
+                <option value="Marvel Rivals">Marvel Rivals</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Format</label>
+              <select v-model="editForm.format" :disabled="isStarted">
+                <option value="single_elimination">Single Elimination</option>
+                <option value="double_elimination">Double Elimination</option>
+                <option value="round_robin">Round Robin</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Match format</label>
+              <select v-model="editForm.match_format" :disabled="isStarted">
+                <option value="bo1">BO1</option>
+                <option value="bo3">BO3</option>
+                <option value="bo5">BO5</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Max timova</label>
+              <input v-model.number="editForm.max_teams" type="number" min="2" max="256" :disabled="isStarted" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nagradni fond ($)</label>
+              <input v-model.number="editForm.prize_pool" type="number" min="0" />
+            </div>
+            <div class="form-group">
+              <label>Datum pocetka</label>
+              <input v-model="editForm.start_date" type="datetime-local" :disabled="isStarted" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Status</label>
+            <select v-model="editForm.status">
+              <option value="draft">Nacrt</option>
+              <option value="registration">Prijave otvorene</option>
+              <option value="in_progress">U tijeku</option>
+              <option value="completed">Zavrsen</option>
+              <option value="cancelled">Otkazan</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Opis</label>
+            <input v-model="editForm.description" type="text" placeholder="Kratak opis turnira..." />
+          </div>
+
+          <div v-if="isStarted" class="edit-hint">
+            Neka polja su zakljucana jer je turnir vec poceo.
+          </div>
+
+          <div class="edit-actions">
+            <button class="btn btn-secondary" @click="closeEditModal">Odustani</button>
+            <button class="btn btn-primary" :disabled="editLoading" @click="saveEdit">
+              <span v-if="editLoading" class="spinner"></span>
+              {{ editLoading ? 'Spremanje...' : 'Spremi promjene' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -250,6 +354,26 @@ const resultForm = ref({
   team1_maps_won: 0,
   team2_maps_won: 0,
   duration_seconds: null,
+})
+
+const showEditModal = ref(false)
+const editLoading = ref(false)
+const editError = ref('')
+const editSuccess = ref('')
+const editForm = ref({
+  name: '',
+  game: '',
+  format: '',
+  match_format: '',
+  max_teams: 8,
+  prize_pool: null,
+  start_date: '',
+  status: '',
+  description: '',
+})
+
+const isStarted = computed(() => {
+  return tournament.value && ['in_progress', 'completed'].includes(tournament.value.status)
 })
 
 const canGenerateBracket = computed(() => {
@@ -339,6 +463,78 @@ function openMatchModal(match) {
 
 function closeModal() {
   selectedMatch.value = null
+}
+
+function toLocalDatetime(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  const offset = d.getTimezoneOffset()
+  const local = new Date(d.getTime() - offset * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
+function openEditModal() {
+  const t = tournament.value
+  editError.value = ''
+  editSuccess.value = ''
+  editForm.value = {
+    name: t.name,
+    game: t.game,
+    format: t.format,
+    match_format: t.match_format,
+    max_teams: t.max_teams,
+    prize_pool: t.prize_pool || null,
+    start_date: toLocalDatetime(t.start_date),
+    status: t.status,
+    description: t.description || '',
+  }
+  showEditModal.value = true
+}
+
+function closeEditModal() {
+  showEditModal.value = false
+}
+
+async function saveEdit() {
+  if (editLoading.value) return
+  editError.value = ''
+  editSuccess.value = ''
+  editLoading.value = true
+  try {
+    const t = tournament.value
+    const payload = {}
+
+    if (editForm.value.name !== t.name) payload.name = editForm.value.name
+    if (editForm.value.game !== t.game) payload.game = editForm.value.game
+    if (editForm.value.format !== t.format) payload.format = editForm.value.format
+    if (editForm.value.match_format !== t.match_format) payload.match_format = editForm.value.match_format
+    if (editForm.value.max_teams !== t.max_teams) payload.max_teams = editForm.value.max_teams
+    if (editForm.value.status !== t.status) payload.status = editForm.value.status
+    if (editForm.value.description !== (t.description || '')) payload.description = editForm.value.description
+
+    const newPrize = editForm.value.prize_pool || null
+    const oldPrize = t.prize_pool || null
+    if (newPrize !== oldPrize) payload.prize_pool = newPrize
+
+    if (editForm.value.start_date) {
+      const newDate = new Date(editForm.value.start_date).toISOString()
+      if (newDate !== t.start_date) payload.start_date = newDate
+    }
+
+    if (Object.keys(payload).length === 0) {
+      editSuccess.value = 'Nema promjena.'
+      return
+    }
+
+    const updated = await tournamentApi.update(id, payload)
+    tournament.value = updated
+    editSuccess.value = 'Turnir uspjesno azuriran!'
+    setTimeout(() => { showEditModal.value = false }, 800)
+  } catch (e) {
+    editError.value = e.message
+  } finally {
+    editLoading.value = false
+  }
 }
 
 async function submitResult() {
@@ -677,6 +873,23 @@ onMounted(load)
 .result-form { display: flex; flex-direction: column; gap: 16px; }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.edit-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
 
 @media (max-width: 600px) {
   .info-grid { grid-template-columns: 1fr 1fr; }

@@ -177,6 +177,8 @@ def update_tournament(tournament_id: str, payload: UpdateTournamentRequest, user
 
     if "game" in updates:
         updates["game"] = updates["game"].value
+    if "format" in updates:
+        updates["format"] = updates["format"].value
     if "match_format" in updates:
         updates["match_format"] = updates["match_format"].value
 

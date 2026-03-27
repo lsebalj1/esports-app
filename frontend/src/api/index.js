@@ -36,10 +36,11 @@ export const tournamentApi = {
     const q = new URLSearchParams(params).toString()
     return request(`${BASE.tournaments}${q ? '?' + q : ''}`)
   },
-  get:              (id)   => request(`${BASE.tournaments}/${id}`),
-  create:           (data) => request(`${BASE.tournaments}`, { method: 'POST', body: JSON.stringify(data) }),
-  getBracket:       (id)   => request(`${BASE.tournaments}/${id}/bracket`),
-  generateBracket:  (id)   => request(`${BASE.tournaments}/${id}/bracket/generate`, { method: 'POST' }),
+  get:              (id)         => request(`${BASE.tournaments}/${id}`),
+  create:           (data)       => request(`${BASE.tournaments}`, { method: 'POST', body: JSON.stringify(data) }),
+  update:           (id, data)   => request(`${BASE.tournaments}/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getBracket:       (id)         => request(`${BASE.tournaments}/${id}/bracket`),
+  generateBracket:  (id)         => request(`${BASE.tournaments}/${id}/bracket/generate`, { method: 'POST' }),
 }
 
 export const matchApi = {
