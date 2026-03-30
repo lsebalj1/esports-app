@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import require_admin
 from app.core.database import get_table
 from app.core.events import publish_event
-from app.schemas.match import CreateMatchInternal, MatchResponse, SubmitResultRequest
+from app.schemas.match import CreateMatchInternal, MatchResponse, SubmitResultRequest, UpdateMatchRequest
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
@@ -219,3 +219,40 @@ def update_match_status(match_id: str, status: str, _user: dict = Depends(requir
         ExpressionAttributeValues={":s": status},
     )
     return {"message": f"Match status updated to {status}"}
+
+@router.patch("/{match_id}", response_model=MatchResponse)
+def update_match(match_id: str, payload: UpdateMatchRequest, _user: dict = Depends(require_admin)):
+    table = get_table("Matches")
+    item = table.get_item(Key={"match_id": match_id}).get("Item")
+    if not item:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        return _item_to_response(item)
+
+    if "status" in updates:
+        allowed = {"pending", "in_progress", "completed", "cancelled"}
+        if updates["status"] not in allowed:
+            raise HTTPException(status_code=400, detail=f"Status must be one of {allowed}")
+        if updates["status"] == "completed" and not updates.get("winner_id") and not item.get("winner_id"):
+            raise HTTPException(status_code=400, detail="Cannot complete match without a winner")
+
+    if updates.get("status") == "completed" or (updates.get("winner_id") and "status" not in updates):
+        updates["status"] = "completed"
+        updates["completed_at"] = datetime.now(timezone.utc).isoformat()
+
+    expr_parts, names, values = [], {}, {}
+    for i, (k, v) in enumerate(updates.items()):
+        expr_parts.append(f"#{k} = :v{i}")
+        names[f"#{k}"] = k
+        values[f":v{i}"] = v
+
+    table.update_item(
+        Key={"match_id": match_id},
+        UpdateExpression="SET " + ", ".join(expr_parts),
+        ExpressionAttributeNames=names,
+        ExpressionAttributeValues=values,
+    )
+    updated = table.get_item(Key={"match_id": match_id})["Item"]
+    return _item_to_response(updated)

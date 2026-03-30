@@ -58,6 +58,14 @@ class CreateTournamentRequest(BaseModel):
     start_date: str
     description: Optional[str] = None
 
+class AddTeamPlayerRequest(BaseModel):
+    player_name: str
+    role: Optional[str] = None
+
+class AddTeamRequest(BaseModel):
+    team_name: str
+    players: List[AddTeamPlayerRequest] = []
+
 class UpdateTournamentRequest(BaseModel):
     name: Optional[str] = None
     game: Optional[GameEnum] = None
@@ -85,6 +93,7 @@ class TournamentResponse(BaseModel):
     admin_name: str
     description: Optional[str] = None
     created_at: str
+    teams: Optional[List[dict]] = None
 
 class BracketMatch(BaseModel):
     match_id: str

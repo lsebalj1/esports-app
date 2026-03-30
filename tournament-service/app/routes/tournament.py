@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.database import get_table
 from app.core.events import publish_event
 from app.schemas.tournament import (
-    BracketMatch, BracketResponse, CreateTournamentRequest,
+    AddTeamRequest, BracketMatch, BracketResponse, CreateTournamentRequest,
     TournamentResponse, UpdateTournamentRequest, GAME_TEAM_SIZE
 )
 
@@ -39,6 +39,7 @@ def _tournament_to_response(item: dict) -> TournamentResponse:
         admin_name=item["admin_name"],
         description=item.get("description"),
         created_at=item["created_at"],
+        teams=item.get("teams"),
     )
 
 async def _create_match_in_service(
@@ -196,6 +197,72 @@ def update_tournament(tournament_id: str, payload: UpdateTournamentRequest, user
     )
     updated = table.get_item(Key={"tournament_id": tournament_id})["Item"]
     return _tournament_to_response(updated)
+
+@router.post("/{tournament_id}/teams", response_model=TournamentResponse)
+def add_team(tournament_id: str, payload: AddTeamRequest, user: dict = Depends(require_admin)):
+    table = get_table("Tournaments")
+    item = table.get_item(Key={"tournament_id": tournament_id}).get("Item")
+    if not item:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    if item["status"] not in ("registration", "draft"):
+        raise HTTPException(status_code=400, detail="Cannot add teams after tournament started")
+
+    teams = item.get("teams") or []
+    max_teams = int(item.get("max_teams", 8))
+    if len(teams) >= max_teams:
+        raise HTTPException(status_code=400, detail=f"Tournament is full ({max_teams} teams max)")
+
+    for t in teams:
+        if t["team_name"].lower() == payload.team_name.lower():
+            raise HTTPException(status_code=409, detail="Team name already exists in this tournament")
+
+    team_id = str(uuid.uuid4())
+    players = []
+    for p in payload.players:
+        players.append({
+            "player_id": str(uuid.uuid4()),
+            "player_name": p.player_name,
+            "role": p.role,
+        })
+
+    new_team = {
+        "team_id": team_id,
+        "team_name": payload.team_name,
+        "players": players,
+    }
+    teams.append(new_team)
+
+    table.update_item(
+        Key={"tournament_id": tournament_id},
+        UpdateExpression="SET teams = :t, current_teams = :ct",
+        ExpressionAttributeValues={":t": teams, ":ct": len(teams)},
+    )
+    updated = table.get_item(Key={"tournament_id": tournament_id})["Item"]
+    return _tournament_to_response(updated)
+
+
+@router.delete("/{tournament_id}/teams/{team_id}", response_model=TournamentResponse)
+def remove_team(tournament_id: str, team_id: str, user: dict = Depends(require_admin)):
+    table = get_table("Tournaments")
+    item = table.get_item(Key={"tournament_id": tournament_id}).get("Item")
+    if not item:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    if item["status"] not in ("registration", "draft"):
+        raise HTTPException(status_code=400, detail="Cannot remove teams after tournament started")
+
+    teams = item.get("teams") or []
+    new_teams = [t for t in teams if t["team_id"] != team_id]
+    if len(new_teams) == len(teams):
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    table.update_item(
+        Key={"tournament_id": tournament_id},
+        UpdateExpression="SET teams = :t, current_teams = :ct",
+        ExpressionAttributeValues={":t": new_teams, ":ct": len(new_teams)},
+    )
+    updated = table.get_item(Key={"tournament_id": tournament_id})["Item"]
+    return _tournament_to_response(updated)
+
 
 @router.post("/{tournament_id}/bracket/generate", response_model=BracketResponse)
 async def generate_bracket(tournament_id: str, user: dict = Depends(require_admin)):

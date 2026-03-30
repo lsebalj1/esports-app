@@ -59,7 +59,65 @@
       <div v-if="error" class="alert alert-error">{{ error }}</div>
       <div v-if="success" class="alert alert-success">{{ success }}</div>
 
-      <!-- Bracket section -->
+      <div v-if="auth.isAdmin && !isStarted" class="card section">
+        <h2 class="section-title">Timovi ({{ tournament.current_teams }} / {{ tournament.max_teams }})</h2>
+
+        <div v-if="tournament.teams && tournament.teams.length" class="teams-list">
+          <div v-for="team in tournament.teams" :key="team.team_id" class="team-row">
+            <div class="team-row-info">
+              <span class="team-row-name">{{ team.team_name }}</span>
+              <span class="team-row-players">{{ (team.players || []).map(p => p.player_name).join(', ') || 'Nema igraca' }}</span>
+            </div>
+            <button class="btn btn-danger btn-sm" @click="removeTeam(team.team_id)">Ukloni</button>
+          </div>
+        </div>
+        <div v-else class="empty-inline">Nema prijavljenih timova.</div>
+
+        <div class="add-team-form">
+          <h4>Dodaj tim</h4>
+          <div v-if="teamError" class="alert alert-error">{{ teamError }}</div>
+          <div class="form-group">
+            <label>Naziv tima</label>
+            <input v-model="teamForm.team_name" type="text" placeholder="Naziv tima" />
+          </div>
+
+          <div class="players-inputs">
+            <div v-for="(player, idx) in teamForm.players" :key="idx" class="player-input-row">
+              <input v-model="player.player_name" type="text" :placeholder="'Igrac ' + (idx + 1)" class="player-name-input" />
+              <select v-model="player.role" class="player-role-input">
+                <option value="">Uloga</option>
+                <option value="IGL">IGL</option>
+                <option value="Entry">Entry</option>
+                <option value="Support">Support</option>
+                <option value="AWP">AWP</option>
+                <option value="Lurk">Lurk</option>
+                <option value="Flex">Flex</option>
+              </select>
+              <button v-if="teamForm.players.length > 1" class="btn btn-danger btn-sm" @click="teamForm.players.splice(idx, 1)">&#10005;</button>
+            </div>
+          </div>
+          <div class="add-team-actions">
+            <button class="btn btn-secondary btn-sm" @click="addPlayerSlot">+ Igrac</button>
+            <button class="btn btn-primary btn-sm" :disabled="teamLoading || !teamForm.team_name" @click="addTeam">
+              <span v-if="teamLoading" class="spinner"></span>
+              {{ teamLoading ? 'Dodavanje...' : 'Dodaj tim' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="tournament.teams && tournament.teams.length" class="card section">
+        <h2 class="section-title">Timovi ({{ tournament.current_teams }})</h2>
+        <div class="teams-list">
+          <div v-for="team in tournament.teams" :key="team.team_id" class="team-row">
+            <div class="team-row-info">
+              <span class="team-row-name">{{ team.team_name }}</span>
+              <span class="team-row-players">{{ (team.players || []).map(p => p.player_name).join(', ') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="matches.length" class="card section">
         <h2 class="section-title">Bracket</h2>
         <div class="bracket">
@@ -103,7 +161,6 @@
 
     </template>
 
-    <!-- Match Detail Modal -->
     <div v-if="selectedMatch" class="modal-overlay" @click.self="closeModal">
       <div class="modal">
         <div class="modal-header">
@@ -187,8 +244,8 @@
             </div>
           </div>
 
-          <div v-if="auth.isAdmin && selectedMatch.status === 'pending' && selectedMatch.team1_id && selectedMatch.team2_id" class="submit-result">
-            <h4>Unesi rezultat</h4>
+          <div v-if="auth.isAdmin && selectedMatch.team1_id && selectedMatch.team2_id" class="submit-result">
+            <h4>{{ selectedMatch.status === 'completed' ? 'Izmijeni rezultat' : 'Unesi rezultat' }}</h4>
             
             <div class="result-form">
               <div class="form-group">
@@ -211,16 +268,31 @@
                 </div>
               </div>
 
-              <div class="form-group">
-                <label>Trajanje (sekunde)</label>
-                <input v-model.number="resultForm.duration_seconds" type="number" min="0" placeholder="3600" />
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Trajanje (sekunde)</label>
+                  <input v-model.number="resultForm.duration_seconds" type="number" min="0" placeholder="3600" />
+                </div>
+                <div class="form-group">
+                  <label>Status</label>
+                  <select v-model="resultForm.status">
+                    <option value="pending">Ceka</option>
+                    <option value="in_progress">U tijeku</option>
+                    <option value="completed">Zavrsen</option>
+                    <option value="cancelled">Otkazan</option>
+                  </select>
+                </div>
               </div>
 
               <div v-if="submitError" class="alert alert-error">{{ submitError }}</div>
 
-              <button class="btn btn-primary" :disabled="submitLoading || !resultForm.winner_id" @click="submitResult">
+              <button v-if="selectedMatch.status === 'pending'" class="btn btn-primary" :disabled="submitLoading || !resultForm.winner_id" @click="submitResult">
                 <span v-if="submitLoading" class="spinner"></span>
                 {{ submitLoading ? 'Spremanje...' : 'Spremi rezultat' }}
+              </button>
+              <button v-else class="btn btn-primary" :disabled="submitLoading" @click="updateMatch">
+                <span v-if="submitLoading" class="spinner"></span>
+                {{ submitLoading ? 'Spremanje...' : 'Azuriraj mec' }}
               </button>
             </div>
           </div>
@@ -354,7 +426,15 @@ const resultForm = ref({
   team1_maps_won: 0,
   team2_maps_won: 0,
   duration_seconds: null,
+  status: 'pending',
 })
+
+const teamForm = ref({
+  team_name: '',
+  players: [{ player_name: '', role: '' }],
+})
+const teamLoading = ref(false)
+const teamError = ref('')
 
 const showEditModal = ref(false)
 const editLoading = ref(false)
@@ -454,10 +534,11 @@ function openMatchModal(match) {
   selectedMatch.value = match
   submitError.value = ''
   resultForm.value = {
-    winner_id: '',
-    team1_maps_won: 0,
-    team2_maps_won: 0,
-    duration_seconds: null,
+    winner_id: match.winner_id || '',
+    team1_maps_won: match.team1_maps_won || 0,
+    team2_maps_won: match.team2_maps_won || 0,
+    duration_seconds: match.duration_seconds || null,
+    status: match.status || 'pending',
   }
 }
 
@@ -551,11 +632,74 @@ async function submitResult() {
     
     matches.value = await matchApi.byTournament(id)
     closeModal()
-    success.value = 'Rezultat uspješno spremljen!'
+    success.value = 'Rezultat uspjesno spremljen!'
   } catch (e) {
     submitError.value = e.message
   } finally {
     submitLoading.value = false
+  }
+}
+
+async function updateMatch() {
+  submitError.value = ''
+  submitLoading.value = true
+  try {
+    const payload = {}
+    const m = selectedMatch.value
+
+    if (resultForm.value.winner_id && resultForm.value.winner_id !== m.winner_id) payload.winner_id = resultForm.value.winner_id
+    if (resultForm.value.team1_maps_won !== m.team1_maps_won) payload.team1_maps_won = resultForm.value.team1_maps_won
+    if (resultForm.value.team2_maps_won !== m.team2_maps_won) payload.team2_maps_won = resultForm.value.team2_maps_won
+    if (resultForm.value.status !== m.status) payload.status = resultForm.value.status
+    if ((resultForm.value.duration_seconds || null) !== (m.duration_seconds || null)) payload.duration_seconds = resultForm.value.duration_seconds
+
+    if (Object.keys(payload).length === 0) {
+      submitError.value = 'Nema promjena.'
+      return
+    }
+
+    await matchApi.update(selectedMatch.value.match_id, payload)
+    matches.value = await matchApi.byTournament(id)
+    closeModal()
+    success.value = 'Mec uspjesno azuriran!'
+  } catch (e) {
+    submitError.value = e.message
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+function addPlayerSlot() {
+  teamForm.value.players.push({ player_name: '', role: '' })
+}
+
+async function addTeam() {
+  if (teamLoading.value) return
+  teamError.value = ''
+  teamLoading.value = true
+  try {
+    const payload = {
+      team_name: teamForm.value.team_name,
+      players: teamForm.value.players.filter(p => p.player_name.trim()),
+    }
+    const updated = await tournamentApi.addTeam(id, payload)
+    tournament.value = updated
+    teamForm.value = { team_name: '', players: [{ player_name: '', role: '' }] }
+    success.value = 'Tim dodan!'
+  } catch (e) {
+    teamError.value = e.message
+  } finally {
+    teamLoading.value = false
+  }
+}
+
+async function removeTeam(teamId) {
+  try {
+    const updated = await tournamentApi.removeTeam(id, teamId)
+    tournament.value = updated
+    success.value = 'Tim uklonjen.'
+  } catch (e) {
+    error.value = e.message
   }
 }
 
@@ -889,6 +1033,99 @@ onMounted(load)
   justify-content: flex-end;
   gap: 10px;
   margin-top: 8px;
+}
+
+.teams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.team-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.team-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.team-row-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.team-row-players {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.add-team-form {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 4px;
+}
+
+.add-team-form h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.players-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.player-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.player-name-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.player-name-input:focus {
+  border-color: var(--accent);
+}
+
+.player-role-input {
+  width: 110px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.player-role-input:focus {
+  border-color: var(--accent);
+}
+
+.add-team-actions {
+  display: flex;
+  gap: 8px;
 }
 
 @media (max-width: 600px) {

@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       '/api/auth': {
         target: 'http://auth-service:8001',
-        rewrite: path => path.replace(/^\/api\/auth/, ''),
+        rewrite: path => path.replace(/^\/api/, ''),
         changeOrigin: true,
       },
       '/api/tournaments': {

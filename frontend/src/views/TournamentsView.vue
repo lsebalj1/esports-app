@@ -52,20 +52,32 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Max igrača</label>
-          <input v-model.number="form.max_participants" type="number" min="2" max="256" />
+          <label>Match format</label>
+          <select v-model="form.match_format">
+            <option value="bo1">BO1</option>
+            <option value="bo3">BO3</option>
+            <option value="bo5">BO5</option>
+          </select>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
+          <label>Max timova</label>
+          <input v-model.number="form.max_teams" type="number" min="2" max="256" />
+        </div>
+        <div class="form-group">
           <label>Nagradni fond ($)</label>
           <input v-model.number="form.prize_pool" type="number" min="0" placeholder="0" />
         </div>
+      </div>
+
+      <div class="form-row">
         <div class="form-group">
-          <label>Datum početka</label>
+          <label>Datum pocetka</label>
           <input v-model="form.start_date" type="datetime-local" />
         </div>
+        <div class="form-group"></div>
       </div>
 
       <button class="btn btn-primary" :disabled="creating" @click="createTournament">
@@ -110,7 +122,7 @@
         </div>
 
         <div class="tc-meta">
-          <span>{{ t.current_participants }} / {{ t.max_participants }}</span>
+          <span>{{ t.current_teams }} / {{ t.max_teams }} timova</span>
           <span>{{ formatLabel(t.format) }}</span>
           <span v-if="t.prize_pool">${{ t.prize_pool }}</span>
           <span>{{ formatDate(t.start_date) }}</span>
@@ -148,7 +160,8 @@ const form = ref({
   name: '',
   game: '',
   format: 'single_elimination',
-  max_participants: 8,
+  match_format: 'bo3',
+  max_teams: 8,
   prize_pool: null,
   start_date: '',
 })
@@ -195,7 +208,7 @@ async function createTournament() {
     }
     await tournamentApi.create(payload)
     showForm.value = false
-    form.value = { name: '', game: '', format: 'single_elimination', max_participants: 8, prize_pool: null, start_date: '' }
+    form.value = { name: '', game: '', format: 'single_elimination', match_format: 'bo3', max_teams: 8, prize_pool: null, start_date: '' }
     await load()
   } catch (e) {
     createError.value = e.message

@@ -17,6 +17,12 @@ async function request(url, options = {}) {
   const res = await fetch(url, { ...options, headers })
 
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+      throw new Error('Sesija istekla, prijavi se ponovo.')
+    }
     const err = await res.json().catch(() => ({ detail: 'Network error' }))
     throw new Error(err.detail || `HTTP ${res.status}`)
   }
@@ -39,6 +45,8 @@ export const tournamentApi = {
   get:              (id)         => request(`${BASE.tournaments}/${id}`),
   create:           (data)       => request(`${BASE.tournaments}`, { method: 'POST', body: JSON.stringify(data) }),
   update:           (id, data)   => request(`${BASE.tournaments}/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  addTeam:          (id, data)   => request(`${BASE.tournaments}/${id}/teams`, { method: 'POST', body: JSON.stringify(data) }),
+  removeTeam:       (id, teamId) => request(`${BASE.tournaments}/${id}/teams/${teamId}`, { method: 'DELETE' }),
   getBracket:       (id)         => request(`${BASE.tournaments}/${id}/bracket`),
   generateBracket:  (id)         => request(`${BASE.tournaments}/${id}/bracket/generate`, { method: 'POST' }),
 }
@@ -47,6 +55,7 @@ export const matchApi = {
   byTournament: (tournamentId) => request(`${BASE.matches}/tournament/${tournamentId}`),
   get:          (id)           => request(`${BASE.matches}/${id}`),
   submitResult: (id, data)     => request(`${BASE.matches}/${id}/result`, { method: 'POST', body: JSON.stringify(data) }),
+  update:       (id, data)     => request(`${BASE.matches}/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 }
 
 export const statsApi = {

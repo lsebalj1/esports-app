@@ -41,7 +41,6 @@ class CreateMatchInternal(BaseModel):
     position: int
     match_format: MatchFormat = MatchFormat.bo3
 
-
 class SubmitResultRequest(BaseModel):
     winner_id: str
     team1_maps_won: int = Field(0, ge=0)
@@ -52,6 +51,12 @@ class SubmitResultRequest(BaseModel):
     duration_seconds: Optional[int] = None
     notes: Optional[str] = None
 
+class UpdateMatchRequest(BaseModel):
+    winner_id: Optional[str] = None
+    team1_maps_won: Optional[int] = None
+    team2_maps_won: Optional[int] = None
+    status: Optional[str] = None
+    duration_seconds: Optional[int] = None
 
 class MatchResponse(BaseModel):
     match_id: str
