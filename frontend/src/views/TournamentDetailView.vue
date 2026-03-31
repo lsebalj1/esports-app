@@ -373,8 +373,8 @@
             <select v-model="editForm.status">
               <option value="draft">Nacrt</option>
               <option value="registration">Prijave otvorene</option>
-              <option value="in_progress">U tijeku</option>
-              <option value="completed">Zavrsen</option>
+              <option value="in_progress" :disabled="!hasBracket">U tijeku{{ !hasBracket ? ' (treba bracket)' : '' }}</option>
+              <option value="completed" :disabled="!hasBracket">Zavrsen{{ !hasBracket ? ' (treba bracket)' : '' }}</option>
               <option value="cancelled">Otkazan</option>
             </select>
           </div>
@@ -384,7 +384,10 @@
             <input v-model="editForm.description" type="text" placeholder="Kratak opis turnira..." />
           </div>
 
-          <div v-if="isStarted" class="edit-hint">
+          <div v-if="!hasBracket && !isStarted" class="edit-hint">
+            Dodaj najmanje 2 tima i generiraj bracket prije nego postavis turnir na "U tijeku" ili "Zavrsen".
+          </div>
+          <div v-else-if="isStarted" class="edit-hint">
             Neka polja su zakljucana jer je turnir vec poceo.
           </div>
 
@@ -456,6 +459,10 @@ const isStarted = computed(() => {
   return tournament.value && ['in_progress', 'completed'].includes(tournament.value.status)
 })
 
+const hasBracket = computed(() => {
+  return matches.value.length > 0
+})
+
 const canGenerateBracket = computed(() => {
   return tournament.value && 
     ['registration', 'draft'].includes(tournament.value.status) &&
@@ -495,9 +502,13 @@ async function load() {
     
     if (!['registration', 'draft'].includes(tournament.value.status)) {
       try {
-        matches.value = await matchApi.byTournament(id)
+        const serviceMatches = await matchApi.byTournament(id)
+        const hasTeamData = serviceMatches.some(m => m.team1_name && m.team1_name !== 'TBD')
+        if (serviceMatches.length && hasTeamData) {
+          matches.value = serviceMatches
+        }
       } catch (e) {
-        // match-service nedostupan — probaj embedded bracket
+        // match-service nedostupan
       }
       if (!matches.value.length) {
         try {

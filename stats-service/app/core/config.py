@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     auth_service_url: str = "http://localhost:8001"
     aws_access_key_id: str = "local"
     aws_secret_access_key: str = "local"
-    aws_default_region: str = "us-east-1"
+    aws_default_region: str = "eu-central-1"
 
     class Config:
         env_file = ".env"

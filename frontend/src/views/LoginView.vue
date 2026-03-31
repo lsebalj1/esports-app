@@ -21,7 +21,7 @@
 
       <button class="btn btn-primary btn-full" :disabled="loading" @click="submit">
         <span v-if="loading" class="spinner"></span>
-        {{ loading ? 'Login' : 'Login' }}
+        {{ loading ? 'Prijava...' : 'Prijava' }}
       </button>
 
       <p class="auth-footer">

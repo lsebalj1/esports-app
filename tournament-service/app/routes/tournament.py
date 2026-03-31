@@ -43,7 +43,10 @@ def _tournament_to_response(item: dict) -> TournamentResponse:
     )
 
 async def _create_match_in_service(
-    tournament_id: str, round_num: int, position: int, match_format: str = "bo3"
+    tournament_id: str, round_num: int, position: int, match_format: str = "bo3",
+    team1_id: str = None, team1_name: str = None,
+    team2_id: str = None, team2_name: str = None,
+    winner_id: str = None, status: str = "pending",
 ) -> str:
     match_id = str(uuid.uuid4())
     try:
@@ -56,6 +59,12 @@ async def _create_match_in_service(
                     "round": round_num,
                     "position": position,
                     "match_format": match_format,
+                    "team1_id": team1_id,
+                    "team1_name": team1_name,
+                    "team2_id": team2_id,
+                    "team2_name": team2_name,
+                    "winner_id": winner_id,
+                    "status": status,
                 },
                 timeout=5.0,
             )
@@ -175,6 +184,23 @@ def update_tournament(tournament_id: str, payload: UpdateTournamentRequest, user
 
     updates = payload.model_dump(exclude_none=True)
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    new_status = updates.get("status")
+    old_status = item["status"]
+    if new_status and new_status != old_status:
+        has_bracket = bool(item.get("bracket"))
+        has_teams = len(item.get("teams") or []) >= 2
+
+        if new_status == "in_progress" and not has_bracket:
+            raise HTTPException(
+                status_code=400,
+                detail="Ne mozes pokrenuti turnir bez generiranog bracketa. Prvo dodaj timove i generiraj bracket.",
+            )
+        if new_status == "completed" and not has_bracket:
+            raise HTTPException(
+                status_code=400,
+                detail="Ne mozes zavrsiti turnir bez generiranog bracketa.",
+            )
 
     if "game" in updates:
         updates["game"] = updates["game"].value
@@ -313,29 +339,44 @@ async def generate_bracket(tournament_id: str, user: dict = Depends(require_admi
         for round_num in range(1, rounds + 1):
             next_round = []
             for pos, (t1, t2) in enumerate(zip(round_teams[::2], round_teams[1::2]), start=1):
-                match_id = await _create_match_in_service(tournament_id, round_num, pos, match_format)
+                t1_id = t1["team_id"] if t1 else None
+                t1_name = t1["team_name"] if t1 else "BYE"
+                t2_id = t2["team_id"] if t2 else None
+                t2_name = t2["team_name"] if t2 else "BYE"
+
+                winner_id = None
+                status = "pending"
+                if t1 and not t2:
+                    winner_id = t1_id
+                    status = "completed"
+                elif t2 and not t1:
+                    winner_id = t2_id
+                    status = "completed"
+
+                match_id = await _create_match_in_service(
+                    tournament_id, round_num, pos, match_format,
+                    team1_id=t1_id, team1_name=t1_name,
+                    team2_id=t2_id, team2_name=t2_name,
+                    winner_id=winner_id, status=status,
+                )
                 match = {
                     "match_id": match_id,
                     "tournament_id": tournament_id,
                     "round": round_num,
                     "position": pos,
                     "match_format": match_format,
-                    "team1_id": t1["team_id"] if t1 else None,
-                    "team1_name": t1["team_name"] if t1 else "BYE",
-                    "team2_id": t2["team_id"] if t2 else None,
-                    "team2_name": t2["team_name"] if t2 else "BYE",
-                    "winner_id": None,
+                    "team1_id": t1_id,
+                    "team1_name": t1_name,
+                    "team2_id": t2_id,
+                    "team2_name": t2_name,
+                    "winner_id": winner_id,
                     "team1_maps_won": 0,
                     "team2_maps_won": 0,
-                    "status": "pending",
+                    "status": status,
                 }
                 if t1 and not t2:
-                    match["winner_id"] = t1["team_id"]
-                    match["status"] = "completed"
                     next_round.append(t1)
                 elif t2 and not t1:
-                    match["winner_id"] = t2["team_id"]
-                    match["status"] = "completed"
                     next_round.append(t2)
                 else:
                     next_round.append(None)

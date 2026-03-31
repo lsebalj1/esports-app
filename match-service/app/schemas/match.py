@@ -40,6 +40,12 @@ class CreateMatchInternal(BaseModel):
     round: int
     position: int
     match_format: MatchFormat = MatchFormat.bo3
+    team1_id: Optional[str] = None
+    team1_name: Optional[str] = None
+    team2_id: Optional[str] = None
+    team2_name: Optional[str] = None
+    winner_id: Optional[str] = None
+    status: str = "pending"
 
 class SubmitResultRequest(BaseModel):
     winner_id: str
