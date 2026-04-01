@@ -7,11 +7,11 @@ import TournamentsView from '../views/TournamentsView.vue'
 import TournamentDetailView from '../views/TournamentDetailView.vue'
 
 const routes = [
-  {path: '/', redirect: '/tournaments' },
+  {path: '/', redirect: () => authStore.isLoggedIn ? '/tournaments' : '/login' },
   {path: '/login', component: LoginView, meta: { guest: true } },
   {path: '/register', component: RegisterView, meta: { guest: true } },
-  {path: '/tournaments', component: TournamentsView },
-  {path: '/tournaments/:id', component: TournamentDetailView },
+  {path: '/tournaments', component: TournamentsView, meta: { auth: true } },
+  {path: '/tournaments/:id', component: TournamentDetailView, meta: { auth: true } },
 ]
 
 const router = createRouter({
@@ -21,6 +21,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   if (to.meta.guest && authStore.isLoggedIn) return '/tournaments'
+  if (to.meta.auth && !authStore.isLoggedIn) return '/login'
 })
 
 export default router

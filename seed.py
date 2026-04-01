@@ -4,12 +4,16 @@ import random
 import time
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
-import bcrypt
+from passlib.context import CryptContext
 import os
 
 ENDPOINT = os.getenv("DYNAMODB_ENDPOINT", "http://localhost:8000")
 REGION = "eu-central-1"
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+if not ADMIN_PASSWORD:
+    raise RuntimeError("ADMIN_PASSWORD env varijabla mora biti postavljena.")
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 dynamodb = boto3.resource(
     "dynamodb",
@@ -48,7 +52,7 @@ print("Sve tablice dostupne. Počinjem seed...\n")
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    return pwd_context.hash(password)
 
 def now(offset_days=0):
     return (datetime.now(timezone.utc) + timedelta(days=offset_days)).isoformat()
@@ -107,7 +111,12 @@ created_users = []
 for u in USERS:
     existing = _get_user_by_email(u["email"])
     if existing:
-        print(f"{u['role']:10} {u['username']:15} — već postoji, preskačem")
+        users_table.update_item(
+            Key={"user_id": existing["user_id"]},
+            UpdateExpression="SET password_hash = :ph",
+            ExpressionAttributeValues={":ph": hash_password(ADMIN_PASSWORD)},
+        )
+        print(f"  {u['role']:10} {u['username']:15} — vec postoji, lozinka azurirana")
         created_users.append(existing)
         continue
     user_id = uid()
