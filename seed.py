@@ -9,6 +9,7 @@ import os
 
 ENDPOINT = os.getenv("DYNAMODB_ENDPOINT", "http://localhost:8000")
 REGION = "eu-central-1"
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 dynamodb = boto3.resource(
     "dynamodb",
@@ -114,7 +115,7 @@ for u in USERS:
         "user_id": user_id,
         "username": u["username"],
         "email": u["email"],
-        "password_hash": hash_password("lozinka123"),
+        "password_hash": hash_password(ADMIN_PASSWORD),
         "role": u["role"],
         "is_active": True,
         "created_at": now(-30),
@@ -372,88 +373,46 @@ TOURNAMENTS = [
     },
 ]
 
-def _scan_tournaments_by_name():
-    existing = {}
+print("\nCistim sve turnire i meceve...")
+
+matches_table = dynamodb.Table("Matches")
+
+def wipe_all_tournaments_and_matches():
+    deleted_matches = 0
     last_key = None
     while True:
-        kwargs = {"ExclusiveStartKey": last_key} if last_key else {}
-        resp = tournaments_table.scan(ProjectionExpression="tournament_id, #n, #s",
-                              ExpressionAttributeNames={"#n": "name", "#s": "status"},
-                              ConsistentRead=True,
-                              **kwargs)
+        kwargs = {}
+        if last_key:
+            kwargs["ExclusiveStartKey"] = last_key
+        resp = matches_table.scan(ProjectionExpression="match_id", **kwargs)
         for item in resp.get("Items", []):
-            existing[item["name"]] = item
+            matches_table.delete_item(Key={"match_id": item["match_id"]})
+            deleted_matches += 1
         last_key = resp.get("LastEvaluatedKey")
         if not last_key:
             break
-    return existing
 
-existing_tournaments = _scan_tournaments_by_name()
-
-def cleanup_duplicate_tournaments():
-    all_items = []
+    deleted_tournaments = 0
     last_key = None
     while True:
         kwargs = {"ConsistentRead": True}
         if last_key:
             kwargs["ExclusiveStartKey"] = last_key
-        resp = tournaments_table.scan(**kwargs)
-        all_items.extend(resp.get("Items", []))
+        resp = tournaments_table.scan(ProjectionExpression="tournament_id", **kwargs)
+        for item in resp.get("Items", []):
+            tournaments_table.delete_item(Key={"tournament_id": item["tournament_id"]})
+            deleted_tournaments += 1
         last_key = resp.get("LastEvaluatedKey")
         if not last_key:
             break
 
-    by_name = {}
-    for item in all_items:
-        name = item["name"]
-        if name not in by_name:
-            by_name[name] = []
-        by_name[name].append(item)
+    return deleted_tournaments, deleted_matches
 
-    deleted = 0
-    for name, items in by_name.items():
-        if len(items) <= 1:
-            continue
-        
-        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-        keep = items[0]
-        for dup in items[1:]:
-            print(f"  Brisem duplikat: {name} (id={dup['tournament_id']})")
-            tournaments_table.delete_item(Key={"tournament_id": dup["tournament_id"]})
-            
-            dup_matches = matches_table.query(
-                IndexName="tournament-index",
-                KeyConditionExpression=boto3.dynamodb.conditions.Key("tournament_id").eq(dup["tournament_id"]),
-            ).get("Items", [])
-            for m in dup_matches:
-                matches_table.delete_item(Key={"match_id": m["match_id"]})
-            deleted += 1
-    return deleted
-
-removed = cleanup_duplicate_tournaments()
-if removed:
-    print(f"Obrisano {removed} duplikata turnira.")
-    existing_tournaments = _scan_tournaments_by_name()  
-else:
-    print("Nema duplikata turnira.")
+del_t, del_m = wipe_all_tournaments_and_matches()
+print(f"  Obrisano {del_t} turnira i {del_m} meceva.")
 
 created_tournaments = []
 for t in TOURNAMENTS:
-    if t["name"] in existing_tournaments:
-        print(f" [{t['status']:14}] {t['name']} — već postoji, preskačem")
-        continue
-    
-    recheck = tournaments_table.scan(
-        FilterExpression="begins_with(#n, :name)",
-        ExpressionAttributeNames={"#n": "name"},
-        ExpressionAttributeValues={":name": t["name"]},
-        ConsistentRead=True,
-    )
-    if recheck.get("Items"):
-        print(f" [{t['status']:14}] {t['name']} — pronađen consistent readom, preskačem")
-        existing_tournaments[t["name"]] = recheck["Items"][0]
-        continue
-
     t_id = uid()
     game = t.get("game", "CS2")
     teams = create_teams_for_game(game, t["max_teams"])
@@ -479,7 +438,7 @@ for t in TOURNAMENTS:
     }
     tournaments_table.put_item(Item=item)
     created_tournaments.append(item)
-    print(f"[{t['status']:14}] {t['name']} ({game}, {t['match_format']})")
+    print(f"  [{t['status']:14}] {t['name']} ({game}, {t['match_format']})")
 
 print("\nKreiranje meceva...")
 
@@ -679,94 +638,11 @@ for t in created_tournaments:
         matches = generate_bracket_for_tournament(t, is_completed=False)
         print(f" {t['name']}: {len(matches)} meceva (in_progress)")
 
-print("\nProvjera postojećih turnira bez bracketa...")
-
-def scan_all_tournaments():
-    items, last_key = [], None
-    while True:
-        kwargs = {"ExclusiveStartKey": last_key} if last_key else {}
-        resp = tournaments_table.scan(**kwargs)
-        items += resp.get("Items", [])
-        last_key = resp.get("LastEvaluatedKey")
-        if not last_key:
-            break
-    return items
-
-newly_created_ids = {t["tournament_id"] for t in created_tournaments}
-fixed = 0
-
-for t in scan_all_tournaments():
-    if t["tournament_id"] in newly_created_ids:
-        continue
-    if t.get("status") not in ("in_progress", "completed"):
-        continue
-
-    existing_bracket = t.get("bracket") or []
-
-    if existing_bracket:
-        first_id = existing_bracket[0].get("match_id")
-        match_exists = False
-        if first_id:
-            match_exists = bool(
-                matches_table.get_item(Key={"match_id": first_id}).get("Item")
-            )
-        if match_exists:
-            print(f"  {t['name']}: bracket postoji ({len(existing_bracket)} meceva)")
-            continue
-        print(f"  {t['name']}: bracket postoji ali matchevi nedostaju — upisujem...")
-        for m in existing_bracket:
-            if m.get("match_id"):
-                matches_table.put_item(Item=m)
-        created_matches.extend(existing_bracket)
-        print(f"  upisano {len(existing_bracket)} meceva")
-        fixed += 1
-        continue
-
-    existing_matches_resp = matches_table.query(
-        IndexName="tournament-index",
-        KeyConditionExpression=boto3.dynamodb.conditions.Key("tournament_id").eq(t["tournament_id"]),
-    )
-    existing_match_items = existing_matches_resp.get("Items", [])
-    if existing_match_items:
-        print(f"  {t['name']}: nema bracket polja ali {len(existing_match_items)} meceva postoji u Matches tablici — sinkroniziram...")
-        tournaments_table.update_item(
-            Key={"tournament_id": t["tournament_id"]},
-            UpdateExpression="SET bracket = :b",
-            ExpressionAttributeValues={":b": existing_match_items},
-        )
-        fixed += 1
-        continue
-
-    teams = list(t.get("teams") or [])
-    if len(teams) < 2:
-        game = t.get("game", "CS2")
-        max_teams = int(t.get("max_teams") or 8)
-        teams = create_teams_for_game(game, min(max_teams, 8))
-        tournaments_table.update_item(
-            Key={"tournament_id": t["tournament_id"]},
-            UpdateExpression="SET teams = :teams, current_teams = :ct",
-            ExpressionAttributeValues={":teams": teams, ":ct": len(teams)},
-        )
-        t["teams"] = teams
-        print(f"  {t['name']}: dodano {len(teams)} timova ({game})")
-
-    is_completed = t["status"] == "completed"
-    matches = generate_bracket_for_tournament(t, is_completed=is_completed)
-    if matches:
-        print(f"  {t['name']}: generiran bracket ({len(matches)} meceva)")
-        created_matches.extend(matches)
-        fixed += 1
-
-if fixed:
-    print(f"popunjen bracket za {fixed} postojeći/ih turnir(a)")
-else:
-    print("svi postojeći turniri imaju bracket")
-
 print("\n" + "=" * 60)
-print("Seed završen!")
+print("Seed zavrsен!")
 print(f"Korisnici:  {len(created_users)}")
 print(f"Turniri:    {len(created_tournaments)}")
-print(f"Mečevi:     {len(created_matches)}")
+print(f"Mecevi:     {len(created_matches)}")
 print("=" * 60)
-print("\nLogin podaci (lozinka: lozinka123)")
+print(f"\nLogin podaci")
 print("  admin@esports.com  — role: admin")

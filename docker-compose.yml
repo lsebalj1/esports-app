@@ -115,6 +115,7 @@ services:
       - AWS_ACCESS_KEY_ID=local
       - AWS_SECRET_ACCESS_KEY=local
       - AWS_DEFAULT_REGION=eu-central-1
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     command: >
       sh -c "pip install boto3 passlib bcrypt -q &&
              python seed.py"
