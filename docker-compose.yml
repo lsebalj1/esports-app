@@ -117,7 +117,7 @@ services:
       - AWS_DEFAULT_REGION=eu-central-1
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     command: >
-      sh -c "pip install boto3 passlib bcrypt -q &&
+      sh -c "pip install boto3 aioboto3 passlib bcrypt -q &&
              python seed.py"
     depends_on:
       - dynamodb-init
