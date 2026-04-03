@@ -5,6 +5,7 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import TournamentsView from '../views/TournamentsView.vue'
 import TournamentDetailView from '../views/TournamentDetailView.vue'
+import NotFoundView from '../views/NotFoundView.vue'
 
 const routes = [
   {path: '/', redirect: () => authStore.isLoggedIn ? '/tournaments' : '/login' },
@@ -12,6 +13,7 @@ const routes = [
   {path: '/register', component: RegisterView, meta: { guest: true } },
   {path: '/tournaments', component: TournamentsView, meta: { auth: true } },
   {path: '/tournaments/:id', component: TournamentDetailView, meta: { auth: true } },
+  {path: '/:pathMatch(.*)*', component: NotFoundView },
 ]
 
 const router = createRouter({

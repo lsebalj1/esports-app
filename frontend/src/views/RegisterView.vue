@@ -2,34 +2,34 @@
   <div class="auth-page">
     <div class="auth-card card">
       <div class="auth-header">
-        <h1 class="auth-title">Register</h1>
-        <p class="auth-sub">Join us</p>
+        <h1 class="auth-title">Registracija</h1>
+        <p class="auth-sub">Kreiraj racun</p>
       </div>
 
       <div v-if="error" class="alert alert-error">{{error}}</div>
 
       <div class="form-group">
-        <label>Korisničko ime</label>
-        <input v-model="username" type="text" placeholder="ProGamer123" />
+        <label>Korisnicko ime</label>
+        <input v-model="username" type="text" placeholder="ProGamer123" @keyup.enter="submit" />
       </div>
 
       <div class="form-group">
         <label>Email</label>
-        <input v-model="email" type="email" placeholder="tvoj@email.com" />
+        <input v-model="email" type="email" placeholder="tvoj@email.com" @keyup.enter="submit" />
       </div>
 
       <div class="form-group">
         <label>Lozinka</label>
-        <input v-model="password" type="password" placeholder="min. 8 znakova" />
+        <input v-model="password" type="password" placeholder="min. 8 znakova" @keyup.enter="submit" />
       </div>
 
       <button class="btn btn-primary btn-full" :disabled="loading" @click="submit">
         <span v-if="loading" class="spinner"></span>
-        {{loading ? 'Register...' : 'Register'}}
+        {{loading ? 'Registracija...' : 'Registriraj se'}}
       </button>
 
       <p class="auth-footer">
-        Already signed up? <router-link to="/login">Login</router-link>
+        Vec imas racun? <router-link to="/login">Prijavi se</router-link>
       </p>
     </div>
   </div>
@@ -51,11 +51,11 @@ const loading = ref(false)
 async function submit() {
   error.value = ''
   if (!username.value || !email.value || !password.value) {
-    error.value = 'All fields need to be filled.'
+    error.value = 'Popuni sva polja.'
     return
   }
   if (password.value.length < 8) {
-    error.value = 'Password must be at least 8 characters.'
+    error.value = 'Lozinka mora imati najmanje 8 znakova.'
     return
   }
   loading.value = true
