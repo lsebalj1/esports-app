@@ -56,6 +56,7 @@ export const matchApi = {
   get:          (id)           => request(`${BASE.matches}/${id}`),
   submitResult: (id, data)     => request(`${BASE.matches}/${id}/result`, { method: 'POST', body: JSON.stringify(data) }),
   update:       (id, data)     => request(`${BASE.matches}/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  delete:       (id)           => request(`${BASE.tournaments}/${id}`, { method: 'DELETE' }),
 }
 
 export const statsApi = {

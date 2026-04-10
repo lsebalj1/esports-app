@@ -256,3 +256,11 @@ def update_match(match_id: str, payload: UpdateMatchRequest, _user: dict = Depen
     )
     updated = table.get_item(Key={"match_id": match_id})["Item"]
     return _item_to_response(updated)
+
+@router.delete("/{match_id}/internal", include_in_schema=False, status_code=204)
+def delete_match_internal(match_id: str):
+    table = get_table("Matches")
+    item = table.get_item(Key={"match_id": match_id}).get("Item")
+    if not item:
+        raise HTTPException(status_code=404, detail="Match not found")
+    table.delete_item(Key={"match_id": match_id})

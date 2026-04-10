@@ -224,6 +224,38 @@ def update_tournament(tournament_id: str, payload: UpdateTournamentRequest, user
     updated = table.get_item(Key={"tournament_id": tournament_id})["Item"]
     return _tournament_to_response(updated)
 
+@router.delete("/{tournament_id}", status_code=204)
+async def delete_tournament(tournament_id: str, user: dict = Depends(require_admin)):
+    table = get_table("Tournaments")
+    item = table.get_item(Key={"tournament_id": tournament_id}).get("Item")
+    if not item:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    if item["admin_id"] != user["user_id"] and user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Not your tournament")
+
+    matches_resp = None
+    try:
+        async with httpx.AsyncClient() as client:
+            matches_resp = await client.get(
+                f"{settings.match_service_url}/matches/tournament/{tournament_id}",
+                timeout=5.0,
+            )
+    except Exception:
+        pass
+
+    if matches_resp and matches_resp.status_code == 200:
+        for match in matches_resp.json():
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.delete(
+                        f"{settings.match_service_url}/matches/{match['match_id']}/internal",
+                        timeout=5.0,
+                    )
+            except Exception:
+                pass
+
+    table.delete_item(Key={"tournament_id": tournament_id})
+
 @router.post("/{tournament_id}/teams", response_model=TournamentResponse)
 def add_team(tournament_id: str, payload: AddTeamRequest, user: dict = Depends(require_admin)):
     table = get_table("Tournaments")

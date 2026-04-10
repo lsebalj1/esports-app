@@ -46,6 +46,13 @@
           Uredi turnir
         </button>
         <button
+          class="btn btn-danger"
+          :disabled="actionLoading"
+          @click="deleteTournament"
+          >
+            Obrisi turnir
+        </button>
+        <button
           v-if="canGenerateBracket"
           class="btn btn-primary"
           :disabled="actionLoading"
@@ -407,12 +414,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { tournamentApi, matchApi } from '../api/index.js'
 import { authStore as auth } from '../stores/auth.js'
 
 const route = useRoute()
 const id = route.params.id
+const router = useRouter()
 
 const tournament = ref(null)
 const matches = ref([])
@@ -711,6 +719,20 @@ async function removeTeam(teamId) {
     success.value = 'Tim uklonjen.'
   } catch (e) {
     error.value = e.message
+  }
+}
+
+async function deleteTournament() {
+  if (!confirm('Jesi li siguran? Ovo ce obrisati turnir i sve meceve.')) return
+  if (actionLoading.value) return
+  actionLoading.value = true
+  try {
+    await tournamentApi.delete(id)
+    router.push('/tournaments')
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    actionLoading.value = false
   }
 }
 
