@@ -7,7 +7,7 @@
           <template v-else>Turniri</template>
         </h1>
         <button v-if="gameFilter" class="clear-filter" @click="clearGameFilter">
-          ✕ Prikaži sve igre
+          Prikazi sve igre
         </button>
       </div>
       <button v-if="auth.isAdmin" class="btn btn-primary" @click="showForm = !showForm">
@@ -86,6 +86,15 @@
       </button>
     </div>
 
+    <div class="search-box">
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Pretrazi turnire po imenu ili igri..."
+        class="search-input"
+      />
+    </div>
+
     <div class="filters">
       <button
         v-for="f in filters"
@@ -99,33 +108,41 @@
     </div>
 
     <div v-if="loading" class="loading">
-      <div class="spinner"></div> Učitavanje...
+      <div class="spinner"></div> Ucitavanje...
     </div>
 
-    <div v-else-if="!tournaments.length" class="empty">
-      <div class="empty-text">Nema turnira.</div>
+    <div v-else-if="!filteredTournaments.length" class="empty">
+      <div class="empty-text">{{ searchQuery ? 'Nema rezultata pretrage.' : 'Nema turnira.' }}</div>
     </div>
 
-    <div v-else class="tournament-list">
+    <div v-else class="tournament-grid">
       <div
-        v-for="t in tournaments"
+        v-for="t in filteredTournaments"
         :key="t.tournament_id"
-        class="tournament-card card"
+        class="tournament-card"
+        :style="cardStyle(t.game)"
         @click="$router.push(`/tournaments/${t.tournament_id}`)"
       >
-        <div class="tc-header">
-          <div>
-            <div class="tc-name">{{ t.name }}</div>
-            <div class="tc-game">{{ t.game }}</div>
+        <div class="tc-accent-bar" :style="{ background: gameColor(t.game) }"></div>
+        <div class="tc-body">
+          <div class="tc-header">
+            <div>
+              <div class="tc-name">{{ t.name }}</div>
+              <div class="tc-game" :style="{ color: gameColor(t.game) }">{{ t.game }}</div>
+            </div>
+            <span class="badge" :class="`badge-${t.status}`">{{ statusLabel(t.status) }}</span>
           </div>
-          <span class="badge" :class="`badge-${t.status}`">{{ statusLabel(t.status) }}</span>
-        </div>
 
-        <div class="tc-meta">
-          <span>{{ t.current_teams }} / {{ t.max_teams }} timova</span>
-          <span>{{ formatLabel(t.format) }}</span>
-          <span v-if="t.prize_pool">${{ t.prize_pool }}</span>
-          <span>{{ formatDate(t.start_date) }}</span>
+          <div class="tc-meta">
+            <span>{{ t.current_teams }} / {{ t.max_teams }} timova</span>
+            <span>{{ formatLabel(t.format) }}</span>
+            <span v-if="t.prize_pool" class="tc-prize">${{ Number(t.prize_pool).toLocaleString() }}</span>
+          </div>
+
+          <div class="tc-footer">
+            <span class="tc-date">{{ formatDate(t.start_date) }}</span>
+            <span class="tc-format-badge" :style="{ background: gameColor(t.game) + '22', color: gameColor(t.game) }">{{ t.match_format?.toUpperCase() }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -147,14 +164,48 @@ const showForm = ref(false)
 const creating = ref(false)
 const createError = ref('')
 const activeFilter = ref('')
+const searchQuery = ref('')
 
 const gameFilter = computed(() => route.query.game || '')
 
 const filters = [
   {label: 'Svi', value: ''},
+  {label: 'Prijave', value: 'registration'},
   {label: 'U tijeku', value: 'in_progress'},
-  {label: 'Završeni', value: 'completed'},
+  {label: 'Zavrseni', value: 'completed'},
 ]
+
+const GAME_COLORS = {
+  'CS2': '#E8A946',
+  'Valorant': '#FF4655',
+  'League of Legends': '#C89B3C',
+  'Dota 2': '#E44D2E',
+  'Fortnite': '#9D4DFF',
+  'Rocket League': '#0088FF',
+  'Overwatch 2': '#FA9C1E',
+  'Apex Legends': '#DA292A',
+  'Rainbow Six Siege': '#5A88C4',
+  'Marvel Rivals': '#7C6AFF',
+}
+
+function gameColor(game) {
+  return GAME_COLORS[game] || '#7C6AFF'
+}
+
+function cardStyle(game) {
+  const color = gameColor(game)
+  return {
+    borderColor: color + '30',
+  }
+}
+
+const filteredTournaments = computed(() => {
+  if (!searchQuery.value.trim()) return tournaments.value
+  const q = searchQuery.value.toLowerCase()
+  return tournaments.value.filter(t =>
+    t.name.toLowerCase().includes(q) || t.game.toLowerCase().includes(q)
+  )
+})
 
 const form = ref({
   name: '',
@@ -218,7 +269,7 @@ async function createTournament() {
 }
 
 function statusLabel(s) {
-  const m = { registration: 'Prijave', in_progress: 'U tijeku', completed: 'Završen', draft: 'Nacrt', cancelled: 'Otkazan' }
+  const m = { registration: 'Prijave', in_progress: 'U tijeku', completed: 'Zavrsen', draft: 'Nacrt', cancelled: 'Otkazan' }
   return m[s] || s
 }
 
@@ -251,6 +302,30 @@ onMounted(load)
   gap: 16px;
 }
 
+.search-box {
+  margin-bottom: 16px;
+}
+
+.search-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 11px 16px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
 .filters {
   display: flex;
   gap: 8px;
@@ -277,43 +352,88 @@ onMounted(load)
   color: var(--accent);
 }
 
-.tournament-list { display: flex; flex-direction: column; gap: 12px; }
+.tournament-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
 
 .tournament-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.1s;
+  transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .tournament-card:hover {
-  border-color: var(--accent);
-  transform: translateY(-1px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.tc-accent-bar {
+  height: 3px;
+  width: 100%;
+}
+
+.tc-body {
+  padding: 18px 20px 16px;
 }
 
 .tc-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .tc-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
+  line-height: 1.3;
 }
 
 .tc-game {
-  font-size: 13px;
-  color: var(--accent);
-  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 3px;
+  letter-spacing: 0.02em;
 }
 
 .tc-meta {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.tc-prize {
+  font-weight: 600;
+  color: var(--success);
+}
+
+.tc-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.tc-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.tc-format-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
 }
 
 .clear-filter {
@@ -329,5 +449,11 @@ onMounted(load)
 
 .clear-filter:hover {
   color: var(--accent);
+}
+
+@media (max-width: 680px) {
+  .tournament-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

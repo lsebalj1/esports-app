@@ -47,6 +47,7 @@ export const tournamentApi = {
   update:           (id, data)   => request(`${BASE.tournaments}/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   addTeam:          (id, data)   => request(`${BASE.tournaments}/${id}/teams`, { method: 'POST', body: JSON.stringify(data) }),
   removeTeam:       (id, teamId) => request(`${BASE.tournaments}/${id}/teams/${teamId}`, { method: 'DELETE' }),
+  delete:           (id)         => request(`${BASE.tournaments}/${id}`, { method: 'DELETE' }),
   getBracket:       (id)         => request(`${BASE.tournaments}/${id}/bracket`),
   generateBracket:  (id)         => request(`${BASE.tournaments}/${id}/bracket/generate`, { method: 'POST' }),
 }
@@ -56,7 +57,6 @@ export const matchApi = {
   get:          (id)           => request(`${BASE.matches}/${id}`),
   submitResult: (id, data)     => request(`${BASE.matches}/${id}/result`, { method: 'POST', body: JSON.stringify(data) }),
   update:       (id, data)     => request(`${BASE.matches}/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  delete:       (id)           => request(`${BASE.tournaments}/${id}`, { method: 'DELETE' }),
 }
 
 export const statsApi = {
